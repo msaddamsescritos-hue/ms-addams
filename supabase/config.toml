@@ -1,0 +1,11 @@
+# Usar: supabase functions deploy contact, reply, delete-letter.
+# Autorização das rotas privadas é verificada DENTRO das funções.
+# O frontend público não pode conter service_role, secret key ou RESEND_API_KEY.
+[functions.contact]
+verify_jwt = false
+
+[functions.reply]
+verify_jwt = false
+
+[functions.delete-letter]
+verify_jwt = false
