@@ -18,7 +18,41 @@
     const { data, error: adminError } = await client.from('site_admins').select('user_id').eq('user_id', session.user.id).maybeSingle();
     if (adminError || !data) { await client.auth.signOut(); status('login-feedback', 'Esta conta não foi autorizada como administradora.', true); showLogin(); return; }
     $('login-layout').classList.add('hidden'); $('dashboard').classList.remove('hidden');
-    await Promise.all([loadChapters(), loadLetters()]);
+    await Promise.all([loadChapters(), loadLetters(), loadTraffic()]);
+  }
+  async function loadTraffic() {
+    const feedback = $('traffic-feedback');
+    if (!feedback) return;
+    feedback.className = 'traffic-feedback';
+    feedback.textContent = 'Consultando as estatísticas…';
+    const {data, error} = await client.rpc('get_site_visit_stats');
+    if (error) {
+      feedback.className = 'traffic-feedback error';
+      feedback.textContent = 'Não foi possível carregar as visitas. Execute o arquivo db/estatisticas-visitas.sql no SQL Editor do Supabase. Detalhe: ' + error.message;
+      return;
+    }
+    const format = value => new Intl.NumberFormat('pt-BR').format(Number(value) || 0);
+    $('visits-today').textContent = format(data.today);
+    $('visits-week').textContent = format(data.week);
+    $('visits-total').textContent = format(data.total);
+    const graph = $('traffic-chart'); graph.replaceChildren();
+    const days = Array.isArray(data.days) ? data.days : [];
+    const max = Math.max(1, ...days.map(day => Number(day.count) || 0));
+    if (!days.length) {
+      const empty = document.createElement('span'); empty.className='traffic-placeholder'; empty.textContent = 'Nenhum dado registrado.'; graph.append(empty);
+    } else {
+      for (const day of days) {
+        const count = Math.max(0, Number(day.count) || 0);
+        const item = document.createElement('div'); item.className = 'traffic-day'; item.title = `${day.label}: ${format(count)} visita(s)`;
+        const number = document.createElement('span'); number.className = 'traffic-value'; number.textContent = format(count);
+        const track = document.createElement('div'); track.className = 'traffic-bar-track';
+        const bar = document.createElement('span'); bar.className = 'traffic-bar'; bar.style.height = `${Math.max(2,Math.round(100 * count / max))}%`; track.append(bar);
+        const label = document.createElement('span'); label.className = 'traffic-day-label'; label.textContent = String(day.label || '');
+        item.append(number,track,label); graph.append(item);
+      }
+    }
+    graph.setAttribute('aria-label', `Visitas nos últimos sete dias: ${days.map(day => `${day.label}: ${day.count}`).join(', ')}`);
+    feedback.textContent = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) + '.';
   }
   function showLogin() { $('dashboard').classList.add('hidden'); $('login-layout').classList.remove('hidden'); }
   async function loadChapters() {
@@ -171,6 +205,7 @@
     popup.document.write(`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><title>Prévia privada · ${escapeHtml(c.title)}</title><meta name="robots" content="noindex"><body style="max-width:760px;margin:60px auto;padding:0 25px;background:#f3ecdf;color:#382d34;font:24px/1.6 Georgia"><p style="color:#765766;font:12px Arial">PRÉVIA PRIVADA · AINDA NÃO PUBLICADO</p><h1>${escapeHtml(c.title)}</h1><p><i>${escapeHtml(c.epigraph)}</i></p>${c.body.split(/\n\s*\n/).map(p=>`<p style="white-space:pre-wrap">${escapeHtml(p)}</p>`).join('')}<p>— Ms. Addams</p></body></html>`);
     popup.document.close();
   });
+  $('refresh-traffic').addEventListener('click',loadTraffic);
   $('refresh-letters').addEventListener('click',loadLetters);
   $('close-letter').addEventListener('click',()=>{$('letter-detail').classList.add('hidden');$('letters-list').classList.remove('hidden');});
   $('reply-form').addEventListener('submit',replyLetter);
