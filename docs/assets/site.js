@@ -21,6 +21,50 @@
     return n;
   };
   const excerpt = (value, limit = 148) => { const s = String(value || '').replace(/\s+/g, ' ').trim(); return s.length > limit ? s.slice(0, limit - 1).trimEnd() + '…' : s; };
+  // Marcadores guardados apenas no navegador; nunca enviados ao Supabase.
+  const favoritesKey = 'msaddams_favorites_v1';
+  const progressPrefix = 'msaddams_reading_v1:';
+  function loadFavorites() {
+    try {
+      const data = JSON.parse(localStorage.getItem(favoritesKey) || '[]');
+      return new Set(Array.isArray(data) ? data.filter(x => typeof x === 'string' && x.length <= 140).slice(0, 500) : []);
+    } catch (_) { return new Set(); }
+  }
+  const favorites = loadFavorites();
+  function updateFavorite(button, slug) {
+    const active = favorites.has(slug);
+    button.textContent = active ? '♥ Nos favoritos' : '♡ Guardar nos favoritos';
+    button.setAttribute('aria-pressed', String(active));
+    button.setAttribute('aria-label', active ? 'Remover dos favoritos' : 'Adicionar aos favoritos');
+    button.classList.toggle('is-favorite', active);
+  }
+  function favoriteButton(slug) {
+    const button = elem('button', 'favorite-toggle');
+    button.type = 'button';
+    button.dataset.favoriteSlug = slug;
+    updateFavorite(button, slug);
+    button.addEventListener('click', () => {
+      if (favorites.has(slug)) favorites.delete(slug); else favorites.add(slug);
+      try { localStorage.setItem(favoritesKey, JSON.stringify([...favorites])); } catch (_) {}
+      document.querySelectorAll('[data-favorite-slug]').forEach(node => {
+        if (node.dataset.favoriteSlug === slug) updateFavorite(node, slug);
+      });
+      document.dispatchEvent(new Event('msaddams:favorites-changed'));
+    });
+    return button;
+  }
+  function readProgress(slug) {
+    try {
+      const data = JSON.parse(localStorage.getItem(progressPrefix + slug) || 'null');
+      return data && Number.isFinite(data.ratio) && data.ratio >= .08 && data.ratio < .97 ? data.ratio : null;
+    } catch (_) { return null; }
+  }
+  function saveProgress(slug, ratio) {
+    if (ratio < .08 || ratio >= .97) return;
+    try { localStorage.setItem(progressPrefix + slug, JSON.stringify({ratio: Math.round(ratio * 1000) / 1000})); }
+    catch (_) {}
+  }
+
   function showStatus(node, message, isError = false) {
     node.textContent = message;
     node.className = isError ? 'form-feedback error' : 'form-feedback success';
@@ -32,9 +76,11 @@
     item.append(elem('h3', '', chapter.title));
     item.append(elem('p', '', excerpt(chapter.epigraph || chapter.body)));
     item.append(elem('p', 'reading-time', `${Math.max(1, Math.ceil(String(chapter.body || '').trim().split(/\s+/).filter(Boolean).length / 220))} min de leitura`));
-    const link = elem('a', '', 'Ler manuscrito  ↗');
-    link.href = `capitulo.html?slug=${encodeURIComponent(chapter.slug)}`;
-    item.append(link);
+    const actions = elem('div', 'chapter-card-actions');
+    const link = elem('a', '', 'Ler manuscrito ↗');
+    link.href = 'capitulo.html?slug=' + encodeURIComponent(chapter.slug);
+    actions.append(link, favoriteButton(chapter.slug));
+    item.append(actions);
     return item;
   }
   async function loadLibrary() {
@@ -52,7 +98,27 @@
       root.append(elem('div', 'notice', 'A biblioteca está aguardando seu primeiro capítulo. Volte para descobrir o próximo manuscrito.'));
       return;
     }
-    chapters.forEach(c => root.append(makeChapterCard(c)));
+    const toolbar = $('#library-favorites-toolbar');
+    const filter = $('#only-favorites');
+    const count = $('#library-favorites-count');
+    let favoritesOnly = false;
+    function render() {
+      root.replaceChildren();
+      const visible = favoritesOnly ? chapters.filter(ch => favorites.has(ch.slug)) : chapters;
+      visible.forEach(ch => root.append(makeChapterCard(ch)));
+      if (!visible.length) root.append(elem('p','notice','Você ainda não guardou nenhum manuscrito. Volte à biblioteca e marque os seus favoritos.'));
+      if (filter && count) {
+        filter.textContent = favoritesOnly ? '♥ Exibindo favoritos · Ver todos' : '♡ Meus favoritos';
+        filter.setAttribute('aria-pressed', String(favoritesOnly));
+        count.textContent = chapters.filter(ch => favorites.has(ch.slug)).length + ' favorito(s)';
+      }
+    }
+    if (toolbar && filter) {
+      toolbar.classList.remove('hidden');
+      filter.addEventListener('click', () => { favoritesOnly = !favoritesOnly; render(); });
+      document.addEventListener('msaddams:favorites-changed',render);
+    }
+    render();
   }
   async function loadChapter() {
     const root = $('#chapter-content'); if (!root) return;
