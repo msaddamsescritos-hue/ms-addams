@@ -2,7 +2,7 @@
   'use strict';
   const cfg = window.ADDAMS_CONFIG || {};
   const functionUrl = name => String(cfg.supabaseUrl || '').replace(/\/$/, '') + '/functions/v1/' + name;
-  const configured = Boolean(cfg.supabaseUrl && cfg.supabasePublishableKey && cfg.turnstileSiteKey);
+  const configured = Boolean(cfg.clubEnabled === true && cfg.supabaseUrl && cfg.supabasePublishableKey && cfg.turnstileSiteKey);
   const readHash = window.location.hash;
   // Os tokens ficam após #, não são enviados ao servidor da página; removê-los da barra de endereço.
   if (/^#(confirm|unsubscribe)=/.test(readHash)) {
