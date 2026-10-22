@@ -180,7 +180,7 @@
     const body = clean($('reply-body').value);
     if (body.length < 2 || body.length > 10000) { status('reply-feedback', 'A resposta deve conter entre 2 e 10.000 caracteres.', true); return; }
     const recipient = clean(currentLetter.email);
-    if (!recipient || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(recipient)) {
+    if (!recipient || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
       status('reply-feedback', 'Esta carta não tem um e-mail válido para resposta.', true);
       return;
     }
@@ -190,7 +190,7 @@
     gmailUrl.searchParams.set('fs', '1');
     gmailUrl.searchParams.set('to', recipient);
     gmailUrl.searchParams.set('su', 'Uma resposta de Ms. Addams');
-    gmailUrl.searchParams.set('body', body + '\\n\\nCom carinho,\\nMs. Addams');
+    gmailUrl.searchParams.set('body', body + '\n\nCom carinho,\nMs. Addams');
     const link = document.createElement('a');
     link.href = gmailUrl.toString();
     link.target = '_blank';
