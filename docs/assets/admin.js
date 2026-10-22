@@ -162,13 +162,58 @@
     $('editor-block').classList.add('hidden'); await loadChapters();
   }
   function switchTab(which) {
-    for (const t of ['manuscripts','letters']) {
+    for (const t of ['manuscripts','letters','club']) {
       const selected = which === t;
       $(`tab-${t}`).classList.toggle('active', selected);
       $(`tab-${t}`).setAttribute('aria-selected', String(selected));
       $(`section-${t}`).classList.toggle('hidden', !selected);
     }
   }
+  async function loadClub() {
+    const feedback = $('club-admin-feedback');
+    const list = $('club-admin-list');
+    if (!feedback || !list || !client) return;
+    feedback.textContent = 'Consultando os leitores…';
+    list.replaceChildren();
+    try {
+      const [members, confirmed, pending, unsubscribed] = await Promise.all([
+        client.from('club_subscribers')
+          .select('email,pseudonym,status,created_at,confirmed_at,unsubscribed_at')
+          .order('created_at',{ascending:false}).limit(100),
+        client.from('club_subscribers').select('id',{head:true,count:'exact'}).eq('status','confirmed'),
+        client.from('club_subscribers').select('id',{head:true,count:'exact'}).eq('status','pending'),
+        client.from('club_subscribers').select('id',{head:true,count:'exact'}).eq('status','unsubscribed')
+      ]);
+      const error = [members,confirmed,pending,unsubscribed].find(result => result.error)?.error;
+      if (error) throw error;
+      $('club-confirmed').textContent=String(confirmed.count || 0);
+      $('club-pending').textContent=String(pending.count || 0);
+      $('club-unsubscribed').textContent=String(unsubscribed.count || 0);
+      const data = members.data || [];
+      if (!data.length) {
+        const empty=document.createElement('p');empty.className='empty-state';
+        empty.textContent='Ainda não há inscritos. O clube só registra quem solicita a entrada e confirma o próprio e-mail.';
+        list.append(empty);
+      }
+      for (const member of data) {
+        const row=document.createElement('div');row.className='club-admin-row';
+        const who=document.createElement('div');
+        const name=document.createElement('strong');
+        name.textContent=member.pseudonym || 'Leitor(a) sem pseudônimo';
+        const email=document.createElement('small');email.textContent=member.email;
+        who.append(name,email);
+        const flag=document.createElement('em');
+        flag.textContent=member.status==='confirmed' ? 'Confirmado' :
+          member.status==='pending' ? 'Aguardando confirmação' : 'Cancelado';
+        row.append(who,flag);list.append(row);
+      }
+      feedback.textContent = 'Dados privados, disponíveis somente para a autora. Mostrando até 100 inscrições recentes.';
+    } catch (err) {
+      feedback.className='form-feedback error';
+      feedback.textContent='O Clube de Leitores ainda precisa da tabela db/clube-leitores.sql no Supabase, ou houve um problema de conexão: '+(err?.message || 'erro desconhecido');
+    }
+  }
+
   // Filtros e busca são locais: nenhuma carta é alterada ao pesquisar.
   function renderLetters() {
     const list = $('letters-list'); list.replaceChildren();
@@ -426,7 +471,11 @@
     } catch(err) { status('reply-feedback',err.message || 'Erro ao excluir.',true); }
     finally { $('delete-letter').disabled = false; }
   });
-  document.querySelectorAll('[data-tab]').forEach(tab => tab.addEventListener('click',()=>switchTab(tab.dataset.tab)));
+  $('refresh-club').addEventListener('click',loadClub);
+  document.querySelectorAll('[data-tab]').forEach(tab => tab.addEventListener('click',()=>{
+    switchTab(tab.dataset.tab);
+    if (tab.dataset.tab === 'club') loadClub();
+  }));
   if (client) client.auth.onAuthStateChange((event) => { if (event === 'SIGNED_OUT') showLogin(); });
   guard();
 })();
