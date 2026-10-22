@@ -71,6 +71,15 @@
     const { data, error } = await client.from('chapters').select('*').order('number', { ascending: true });
     if (error) { $('manuscript-list').textContent = `Erro ao carregar manuscritos: ${error.message}`; return; }
     chapters = data || [];
+    const clubOptions = $('club-chapter-select');
+    if (clubOptions) {
+      const selected = clubOptions.value;
+      clubOptions.replaceChildren(new Option('Selecione um manuscrito',''));
+      chapters.filter(c => c.published).forEach(c => {
+        clubOptions.add(new Option('Capítulo '+ c.number +' — '+ c.title,c.slug));
+      });
+      if (chapters.some(c => c.published && c.slug === selected)) clubOptions.value = selected;
+    }
     $('count-published').textContent = chapters.filter(c => c.published).length;
     $('count-draft').textContent = chapters.filter(c => !c.published).length;
     const list = $('manuscript-list'); list.replaceChildren();
@@ -168,6 +177,37 @@
       $(`tab-${t}`).setAttribute('aria-selected', String(selected));
       $(`section-${t}`).classList.toggle('hidden', !selected);
     }
+  }
+  async function clubNotification(mode) {
+    const slug=$('club-chapter-select').value;
+    const sendButton=$('club-notify-send');
+    const previewButton=$('club-notify-preview');
+    if (!cfg.clubEnabled) {
+      status('club-notify-feedback','O envio de avisos será liberado após configurar o Supabase e o remetente do clube.',true);
+      return;
+    }
+    if (!slug) {status('club-notify-feedback','Selecione um capítulo publicado.',true);return;}
+    if (mode==='send' && !window.confirm('Enviar avisos para ATÉ DEZ leitores com inscrição confirmada? Não serão repetidos os avisos já registrados.')) return;
+    sendButton.disabled=true;previewButton.disabled=true;
+    status('club-notify-feedback',mode==='preview' ? 'Consultando inscrições…' : 'Enviando avisos…');
+    try {
+      const {data:{session}}=await client.auth.getSession();
+      if (!session?.access_token) throw new Error('Sua sessão expirou. Entre novamente.');
+      const response=await fetch(functionUrl('club-notify'), {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},
+        body:JSON.stringify({mode,slug})
+      });
+      const result=await response.json().catch(()=>({}));
+      if (!response.ok)throw new Error(result.error || 'Não foi possível processar os avisos.');
+      if (mode==='preview') {
+        status('club-notify-feedback','Confirmados: '+(result.confirmed || 0)+'. Já avisados sobre este capítulo: '+(result.sent || 0)+'. Nenhum e-mail foi enviado nesta consulta.');
+      } else {
+        const text='Enviados agora: '+(result.sent || 0)+'. Falhas: '+(result.failed || 0)+'. Cancelados ignorados: '+(result.skipped || 0)+'.';
+        status('club-notify-feedback',text+(result.moreMayRemain ? ' Pode haver outros leitores; envie outro lote se desejar.' : ' Não há indicação de outro lote pendente.'));
+      }
+    } catch(err) {status('club-notify-feedback',err.message || 'Não foi possível enviar os avisos.',true);}
+    finally {sendButton.disabled=false;previewButton.disabled=false;}
   }
   async function loadClub() {
     const feedback = $('club-admin-feedback');
@@ -471,6 +511,8 @@
     } catch(err) { status('reply-feedback',err.message || 'Erro ao excluir.',true); }
     finally { $('delete-letter').disabled = false; }
   });
+  $('club-notify-preview').addEventListener('click',()=>clubNotification('preview'));
+  $('club-notify-send').addEventListener('click',()=>clubNotification('send'));
   $('refresh-club').addEventListener('click',loadClub);
   document.querySelectorAll('[data-tab]').forEach(tab => tab.addEventListener('click',()=>{
     switchTab(tab.dataset.tab);
