@@ -155,6 +155,12 @@
     if (!chapter.title || !chapter.body || !Number.isInteger(chapter.number) || chapter.number < 1) { status('chapter-feedback', 'Preencha corretamente o número, título e conteúdo.', true); return; }
     status('chapter-feedback', 'Salvando manuscrito…');
     const id = $('chapter-id').value;
+    const existing = chapters.find(c => String(c.id) === String(id));
+    if (existing?.published && !published &&
+        !window.confirm('Este capítulo está publicado. Salvar como rascunho vai retirá-lo da biblioteca. Deseja continuar?')) {
+      status('chapter-feedback', 'Alteração cancelada. O capítulo continua publicado.');
+      return;
+    }
     const request = id ? client.from('chapters').update(chapter).eq('id', id).select().single() : client.from('chapters').insert(chapter).select().single();
     const { data, error } = await request;
     if (error) { status('chapter-feedback', `Não foi possível salvar: ${error.message}`, true); return; }
