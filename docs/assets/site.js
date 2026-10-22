@@ -81,6 +81,55 @@
     paragraphs.forEach(p => { if (p.trim()) paper.append(elem('p', '', p.trim())); });
     paper.append(elem('p', 'chapter-signature', '— Ms. Addams'));
     root.append(paper);
+
+    // Preferência de leitura permanece somente nesta sessão do navegador.
+    const sizes = [21, 24, 27, 30];
+    let sizeIndex = 1;
+    try {
+      const chosen = Number(sessionStorage.getItem('msaddams_reader_font_v2'));
+      if (sizes.includes(chosen)) sizeIndex = sizes.indexOf(chosen);
+    } catch (_) { /* leitura continua mesmo sem armazenamento */ }
+    const controls = elem('div', 'reader-controls');
+    controls.setAttribute('aria-label', 'Ajustar tamanho do texto');
+    const controlLabel = elem('span', 'reader-controls-label', 'Tamanho da letra');
+    const decrease = elem('button', '', 'A−');
+    decrease.type = 'button';
+    decrease.setAttribute('aria-label', 'Diminuir tamanho da letra');
+    const increase = elem('button', '', 'A+');
+    increase.type = 'button';
+    increase.setAttribute('aria-label', 'Aumentar tamanho da letra');
+    const sizeStatus = elem('span', 'reader-controls-status');
+    sizeStatus.setAttribute('aria-live', 'polite');
+    const applySize = () => {
+      paper.style.setProperty('--reader-font-size', sizes[sizeIndex] + 'px');
+      sizeStatus.textContent = sizes[sizeIndex] + ' px';
+      decrease.disabled = sizeIndex === 0;
+      increase.disabled = sizeIndex === sizes.length - 1;
+      try { sessionStorage.setItem('msaddams_reader_font_v2', String(sizes[sizeIndex])); } catch (_) {}
+    };
+    decrease.addEventListener('click', () => { sizeIndex = Math.max(0, sizeIndex - 1); applySize(); });
+    increase.addEventListener('click', () => { sizeIndex = Math.min(sizes.length - 1, sizeIndex + 1); applySize(); });
+    controls.append(controlLabel, decrease, sizeStatus, increase);
+    header.append(controls);
+    applySize();
+
+    // Indicador local de leitura: não registra páginas, identidade ou progresso no servidor.
+    const track = $('#reader-progress');
+    const fill = $('#reader-progress-fill');
+    if (track && fill) {
+      const updateReadingProgress = () => {
+        const rect = paper.getBoundingClientRect();
+        const viewport = window.innerHeight || 1;
+        const readFraction = (viewport * 0.28 - rect.top) / Math.max(rect.height, 1);
+        const percent = Math.max(0, Math.min(100, Math.round(readFraction * 100)));
+        fill.style.width = percent + '%';
+        track.setAttribute('aria-valuenow', String(percent));
+      };
+      window.addEventListener('scroll', updateReadingProgress, { passive: true });
+      window.addEventListener('resize', updateReadingProgress);
+      updateReadingProgress();
+    }
+
     // Navegação somente entre capítulos PUBLICADOS; nunca revela rascunhos.
     let library = [];
     if (!supa && !configured) library = [openingChapter];
