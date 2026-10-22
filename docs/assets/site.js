@@ -31,6 +31,7 @@
     item.append(elem('div', 'chapter-eyebrow', chapter.sample ? 'TRECHO DE APRESENTAÇÃO' : `MANUSCRITO Nº ${chapter.number}`));
     item.append(elem('h3', '', chapter.title));
     item.append(elem('p', '', excerpt(chapter.epigraph || chapter.body)));
+    item.append(elem('p', 'reading-time', `${Math.max(1, Math.ceil(String(chapter.body || '').trim().split(/\s+/).filter(Boolean).length / 220))} min de leitura`));
     const link = elem('a', '', 'Ler manuscrito  ↗');
     link.href = `capitulo.html?slug=${encodeURIComponent(chapter.slug)}`;
     item.append(link);
@@ -71,6 +72,8 @@
     header.append(elem('span', 'kicker', `${chapter.sample ? 'PRÉVIA · ' : ''}CAPÍTULO ${String(chapter.number).padStart(2, '0')}`));
     header.append(elem('h1', '', chapter.title));
     if (chapter.epigraph) header.append(elem('p', 'epigraph', `“${chapter.epigraph}”`));
+    const words = String(chapter.body || '').trim().split(/\s+/).filter(Boolean).length;
+    header.append(elem('p', 'reading-time', `Leitura de aproximadamente ${Math.max(1, Math.ceil(words / 220))} min · Capítulo ${String(chapter.number).padStart(2, '0')}`));
     root.append(header);
     const paper = elem('div', 'reading-paper');
     if (chapter.sample) paper.append(elem('p', 'reader-note', 'Trecho de apresentação. A versão integral ainda será adicionada pela autora.'));
@@ -78,6 +81,40 @@
     paragraphs.forEach(p => { if (p.trim()) paper.append(elem('p', '', p.trim())); });
     paper.append(elem('p', 'chapter-signature', '— Ms. Addams'));
     root.append(paper);
+    // Navegação somente entre capítulos PUBLICADOS; nunca revela rascunhos.
+    let library = [];
+    if (!supa && !configured) library = [openingChapter];
+    else if (supa) {
+      const {data, error} = await supa.from('chapters')
+        .select('number,slug,title').eq('published', true).order('number', {ascending:true});
+      if (!error) library = data || [];
+    }
+    const at = library.findIndex(c => c.number === chapter.number);
+    if (at >= 0 && library.length > 1) {
+      const nav = elem('nav','chapter-navigation');
+      nav.setAttribute('aria-label','Navegar entre manuscritos publicados');
+      const createNav = (target, label) => {
+        const a = elem('a','chapter-nav-link', label + ' · ' + target.title);
+        a.href = 'capitulo.html?slug=' + encodeURIComponent(target.slug);
+        return a;
+      };
+      if (at > 0) nav.append(createNav(library[at - 1], '← Anterior'));
+      if (at < library.length - 1) nav.append(createNav(library[at + 1], 'Próximo →'));
+      root.append(nav);
+    }
+    const share = elem('div','chapter-share-tools');
+    const shareLabel = elem('span','kicker','ESTE MANUSCRITO TOCOU VOCÊ?');
+    const shareButton = elem('button','outline-btn','Compartilhar capítulo ↗');
+    shareButton.type = 'button';
+    shareButton.addEventListener('click',async () => {
+      const url = window.location.origin + '/capitulo.html?slug=' + encodeURIComponent(slug);
+      if (navigator.share) {
+        try { await navigator.share({title:document.title,url}); return; } catch (_) { /* cancelamento */ }
+      }
+      try { await navigator.clipboard.writeText(url); shareButton.textContent = 'Link copiado ✓'; }
+      catch (_) { shareButton.textContent = 'Copie o endereço do navegador para compartilhar'; }
+    });
+    share.append(shareLabel,shareButton); root.append(share);
   }
   function initLetters() {
     const form = $('#letter-form'); if (!form) return;
