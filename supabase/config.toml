@@ -16,3 +16,7 @@ verify_jwt = false
 
 [functions.club-action]
 verify_jwt = false
+
+# Envio administrativo: autenticação e papel de autora verificados na função.
+[functions.club-notify]
+verify_jwt = false
