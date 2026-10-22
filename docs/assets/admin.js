@@ -2,6 +2,14 @@
 (() => {
   'use strict';
   const $ = id => document.getElementById(id);
+  // Remove apenas o parâmetro de divulgação indesejado da barra de endereços.
+  try {
+    const pageUrl = new URL(window.location.href);
+    if (pageUrl.searchParams.get('utm_source') === 'chatgpt.com') {
+      pageUrl.searchParams.delete('utm_source');
+      window.history.replaceState(window.history.state, '', pageUrl.pathname + pageUrl.search + pageUrl.hash);
+    }
+  } catch (_) { /* navegação continua normalmente */ }
   const cfg = window.ADDAMS_CONFIG || {};
   const functionUrl = name => `${String(cfg.supabaseUrl || '').replace(/\/$/, '')}/functions/v1/${name}`;
   const configured = Boolean(cfg.supabaseUrl && cfg.supabasePublishableKey && window.supabase);
@@ -161,7 +169,7 @@
     $('reply-body').value = currentLetter.reply_text || '';
     const answered = currentLetter.status === 'replied';
     $('send-reply').disabled = answered || currentLetter.status === 'sending';
-    $('send-reply').textContent = answered ? 'Carta já respondida' : currentLetter.status === 'sending' ? 'Envio em andamento' : 'Responder com Ms. Addams →';
+    $('send-reply').textContent = answered ? 'Carta já respondida' : currentLetter.status === 'sending' ? 'Envio em andamento' : 'Preparar resposta no Gmail →';
     $('reply-feedback').textContent = answered ? `Resposta enviada em ${timestamp(currentLetter.replied_at)}.` : '';
     $('letter-detail').classList.remove('hidden'); $('letters-list').classList.add('hidden');
     $('letter-detail').scrollIntoView({behavior:'smooth'});
@@ -171,17 +179,26 @@
     if (!currentLetter) return;
     const body = clean($('reply-body').value);
     if (body.length < 2 || body.length > 10000) { status('reply-feedback', 'A resposta deve conter entre 2 e 10.000 caracteres.', true); return; }
-    const { data: { session } } = await client.auth.getSession();
-    if (!session?.access_token) { status('reply-feedback', 'Sua sessão expirou. Entre novamente.', true); return; }
-    $('send-reply').disabled = true;
-    status('reply-feedback', 'Enviando resposta…');
-    try {
-      const res = await fetch(functionUrl('reply'), {method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},body:JSON.stringify({letterId:currentLetter.id,replyText:body})});
-      const info = await res.json().catch(()=>({}));
-      if (!res.ok) throw new Error(info.error || 'Falha no envio.');
-      status('reply-feedback', 'Resposta enviada com a assinatura de Ms. Addams.');
-      await loadLetters(); openLetter(currentLetter.id);
-    } catch(err) { status('reply-feedback', err.message || 'Não foi possível enviar a resposta.', true); $('send-reply').disabled = false; }
+    const recipient = clean(currentLetter.email);
+    if (!recipient || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(recipient)) {
+      status('reply-feedback', 'Esta carta não tem um e-mail válido para resposta.', true);
+      return;
+    }
+    const gmailUrl = new URL('https://mail.google.com/mail/');
+    gmailUrl.searchParams.set('authuser', 'msaddams.escritos@gmail.com');
+    gmailUrl.searchParams.set('view', 'cm');
+    gmailUrl.searchParams.set('fs', '1');
+    gmailUrl.searchParams.set('to', recipient);
+    gmailUrl.searchParams.set('su', 'Uma resposta de Ms. Addams');
+    gmailUrl.searchParams.set('body', body + '\\n\\nCom carinho,\\nMs. Addams');
+    const link = document.createElement('a');
+    link.href = gmailUrl.toString();
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    status('reply-feedback', 'Gmail solicitado. Confira a conta remetente e clique em Enviar no Gmail. Esta carta continuará pendente no gabinete; abrir o Gmail não confirma o envio.');
   }
   $('login-form').addEventListener('submit', async event => {
     event.preventDefault(); if (!client) return;
