@@ -244,8 +244,8 @@
       status('reply-feedback', 'Esta carta não tem um e-mail válido para resposta.', true);
       return;
     }
-    const alias = clean(currentLetter.alias).slice(0, 80);
-    const greeting = alias ? `Olá, ${alias},` : 'Olá,';
+    const greeting = 'Caro(a) leitor(a),';
+    const introduction = 'Que estas palavras o(a) encontrem em serenidade.\n\nRecebi sua mensagem e a li com a atenção reservada àquilo que não se diz a qualquer um. Há cartas que apenas chegam; outras, porém, permanecem.';
     const formattedBody = body.split(/\n\s*\n/).filter(Boolean).map(paragraph =>
       '<p style="margin:0 0 20px 0;white-space:pre-wrap;color:#332b32;font-family:Georgia,serif;font-size:19px;line-height:1.68;">' +
       escapeHtml(paragraph) + '</p>'
@@ -255,8 +255,9 @@
     <p style="font:11px Arial,sans-serif;letter-spacing:2px;color:#9a7182;margin:0 0 13px">CORRESPONDÊNCIA PARTICULAR</p>
     <p style="border-top:1px solid #d9c1c6;margin:0 0 28px"></p>
     <p style="margin:0 0 23px;color:#69495b;font:italic 23px Georgia,serif">${escapeHtml(greeting)}</p>
+    <p style="margin:0 0 25px;white-space:pre-line;color:#44343c;font-family:Georgia,serif;font-size:19px;line-height:1.7;">${escapeHtml(introduction)}</p>
     ${formattedBody}
-    <p style="margin:36px 0 8px;font:italic 21px Georgia,serif;color:#6b4859">Com discrição,</p>
+    <p style="margin:36px 0 8px;font:italic 21px Georgia,serif;color:#6b4859">Até que nossas palavras se encontrem novamente,</p>
     <p style="margin:0 0 19px;color:#8a6a7b;font:italic 17px Georgia,serif">Há histórias que só se revelam no silêncio.</p>
     <p style="border-top:1px solid #d9c1c6;margin:0 0 18px"></p>
     <img src="${logoUrl}" alt="Ms. Addams — Correspondência particular" width="312" height="73" style="display:block;width:312px;max-width:100%;height:auto;border:0">
@@ -265,7 +266,7 @@
     previewBox.innerHTML = htmlLetter;
     $('formatted-letter').classList.remove('hidden');
 
-    const plain = greeting + '\n\n' + body + '\n\nCom discrição,\nMs. Addams\nHá histórias que só se revelam no silêncio.';
+    const plain = greeting + '\n\n' + introduction + '\n\n' + body + '\n\nAté que nossas palavras se encontrem novamente,\nMs. Addams\nHá histórias que só se revelam no silêncio.';
     let copied = false;
     try {
       if (navigator.clipboard?.write && window.ClipboardItem) {
