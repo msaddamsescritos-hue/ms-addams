@@ -15,7 +15,6 @@
   const configured = Boolean(cfg.supabaseUrl && cfg.supabasePublishableKey && window.supabase);
   const client = configured ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabasePublishableKey) : null;
   let chapters = [], letters = [], currentLetter = null, submitIntent = 'draft';
-  let preparedLetterHtml = '', preparedLetterPlain = '';
   const escapeHtml = v => String(v || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   function status(id, msg, error = false) { const el = $(id); el.textContent = msg; el.className = `form-feedback ${error ? 'error' : 'success'}`; }
   const clean = text => String(text || '').trim();
@@ -220,9 +219,6 @@
     $('letter-meta').textContent = `Recebida em ${timestamp(currentLetter.created_at)} · Responder para: ${currentLetter.email}`;
     $('letter-message').textContent = currentLetter.message;
     $('reply-body').value = currentLetter.reply_text || '';
-    $('formatted-letter').classList.add('hidden');
-    $('formatted-letter-preview').replaceChildren();
-    preparedLetterHtml = ''; preparedLetterPlain = '';
     $('reply-template').value = '';
     $('mark-letter-replied').classList.toggle('hidden', currentLetter.status !== 'new');
     $('reply-template').disabled = currentLetter.status !== 'new';
@@ -233,40 +229,8 @@
     $('letter-detail').classList.remove('hidden'); $('letters-list').classList.add('hidden');
     $('letter-detail').scrollIntoView({behavior:'smooth'});
   }
-  async function copyFormattedLetter() {
-    if (!preparedLetterHtml) {
-      status('reply-feedback', 'Prepare a carta antes de copiá-la.', true);
-      return;
-    }
-    let copied = false;
-    try {
-      if (navigator.clipboard?.write && window.ClipboardItem) {
-        await navigator.clipboard.write([new ClipboardItem({
-          'text/html': new Blob([preparedLetterHtml], { type: 'text/html' }),
-          'text/plain': new Blob([preparedLetterPlain], { type: 'text/plain' })
-        })]);
-        copied = true;
-      }
-    } catch (_) { /* tentativa alternativa abaixo */ }
-    if (!copied) {
-      try {
-        const selection = window.getSelection();
-        const range = document.createRange();
-        range.selectNodeContents($('formatted-letter-preview'));
-        selection.removeAllRanges();
-        selection.addRange(range);
-        copied = document.execCommand('copy');
-        selection.removeAllRanges();
-      } catch (_) { /* mantém a prévia disponível */ }
-    }
-    if (copied) {
-      status('reply-feedback', 'Carta copiada com saudação, despedida e logo. Agora abra o Gmail, remova a assinatura antiga se ela aparecer e cole com Ctrl + V.');
-      $('copy-formatted-letter').textContent = '✓ Copiada! Copiar novamente';
-    } else {
-      status('reply-feedback', 'A cópia automática não foi permitida. Selecione a prévia da carta abaixo, pressione Ctrl + C e depois cole no Gmail com Ctrl + V.', true);
-    }
-  }
-
+  // Um clique prepara o texto completo no próprio Gmail.
+  // Links de composição do Gmail não aceitam HTML nem estilos na mensagem.
   async function replyLetter(event) {
     event.preventDefault();
     if (!currentLetter) return;
@@ -280,41 +244,41 @@
       status('reply-feedback', 'Esta carta não tem um e-mail válido para resposta.', true);
       return;
     }
-    const greeting = 'Caro(a) leitor(a),';
-    const introduction = 'Que estas palavras o(a) encontrem em serenidade.\n\nRecebi sua mensagem e a li com a atenção reservada àquilo que não se diz a qualquer um. Há cartas que apenas chegam; outras, porém, permanecem.';
-    const formattedBody = body.split(/\n\s*\n/).filter(Boolean).map(paragraph =>
-      '<p style="margin:0 0 20px 0;white-space:pre-wrap;color:#332b32;font-family:Georgia,serif;font-size:19px;line-height:1.68;">' +
-      escapeHtml(paragraph) + '</p>'
-    ).join('');
-    const logoUrl = 'https://msaddams.com/assets/ms-addams-logo-email.png';
-    const htmlLetter = `<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="width:100%;max-width:650px;border-collapse:collapse;background:#fcf9f6;color:#332b32;font-family:Georgia,serif"><tbody><tr><td style="padding:36px 34px 32px 34px;border-top:4px solid #6b4859;border-left:1px solid #dfcdd0;border-right:1px solid #dfcdd0;border-bottom:1px solid #dfcdd0">
-    <p style="font:11px Arial,sans-serif;letter-spacing:2px;color:#9a7182;margin:0 0 13px">CORRESPONDÊNCIA PARTICULAR</p>
-    <p style="border-top:1px solid #d9c1c6;margin:0 0 28px"></p>
-    <p style="margin:0 0 23px;color:#69495b;font:italic 23px Georgia,serif">${escapeHtml(greeting)}</p>
-    <p style="margin:0 0 25px;white-space:pre-line;color:#44343c;font-family:Georgia,serif;font-size:19px;line-height:1.7;">${escapeHtml(introduction)}</p>
-    ${formattedBody}
-    <p style="margin:36px 0 8px;font:italic 21px Georgia,serif;color:#6b4859">Até que nossas palavras se encontrem novamente,</p>
-    <p style="margin:0 0 19px;color:#8a6a7b;font:italic 17px Georgia,serif">Há histórias que só se revelam no silêncio.</p>
-    <p style="border-top:1px solid #d9c1c6;margin:0 0 18px"></p>
-    <img src="${logoUrl}" alt="Ms. Addams — Correspondência particular" width="312" height="73" style="display:block;width:312px;max-width:100%;height:auto;border:0">
-    </td></tr></tbody></table>`;
-    const previewBox = $('formatted-letter-preview');
-    previewBox.innerHTML = htmlLetter;
-    $('formatted-letter').classList.remove('hidden');
-
-    preparedLetterHtml = htmlLetter;
-    preparedLetterPlain = greeting + '\n\n' + introduction + '\n\n' + body + '\n\nAté que nossas palavras se encontrem novamente,\nMs. Addams\nHá histórias que só se revelam no silêncio.';
-    $('copy-formatted-letter').textContent = '1. Copiar carta formatada';
+    const emailBody = [
+      'Caro(a) leitor(a),',
+      '',
+      'Que estas palavras o(a) encontrem em serenidade.',
+      '',
+      'Recebi sua mensagem e a li com a atenção reservada àquilo que não se diz a qualquer um. Há cartas que apenas chegam; outras, porém, permanecem.',
+      '',
+      body,
+      '',
+      'Até que nossas palavras se encontrem novamente,',
+      'Ms. Addams'
+    ].join('\n');
     const gmailUrl = new URL('https://mail.google.com/mail/');
     gmailUrl.searchParams.set('authuser', 'msaddams.escritos@gmail.com');
     gmailUrl.searchParams.set('view', 'cm');
     gmailUrl.searchParams.set('fs', '1');
     gmailUrl.searchParams.set('to', recipient);
     gmailUrl.searchParams.set('su', 'Uma resposta às suas entrelinhas | Ms. Addams');
-    $('open-gmail-compose').href = gmailUrl.toString();
-    status('reply-feedback', 'A carta foi preparada na prévia abaixo, com a nova saudação e despedida. Clique em “Copiar carta formatada”, depois em “Abrir Gmail” e cole no corpo da mensagem com Ctrl + V.');
-    $('formatted-letter').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    gmailUrl.searchParams.set('body', emailBody);
+
+    const feedback = $('reply-feedback');
+    feedback.replaceChildren();
+    feedback.className = 'form-feedback success';
+    feedback.append(document.createTextNode('A carta foi preparada no Gmail com saudação, resposta e despedida. Confira o remetente antes de enviar. Se o Gmail não abrir automaticamente: '));
+    const link = document.createElement('a');
+    link.href = gmailUrl.toString();
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.referrerPolicy = 'no-referrer';
+    link.textContent = 'Abrir carta no Gmail ↗';
+    feedback.append(link);
+    // Acionado pela interação da própria autora; mantém link clicável caso haja bloqueio.
+    link.click();
   }
+
   $('login-form').addEventListener('submit', async event => {
     event.preventDefault(); if (!client) return;
     const email = $('login-form').elements.namedItem('email').value.trim(); const password = $('login-form').elements.namedItem('password').value;
@@ -353,14 +317,6 @@
     $('reply-body').focus();
   });
   $('mark-letter-replied').addEventListener('click', confirmLetterSent);
-  $('copy-formatted-letter').addEventListener('click', copyFormattedLetter);
-  $('reply-body').addEventListener('input', () => {
-    if (preparedLetterHtml) {
-      preparedLetterHtml = ''; preparedLetterPlain = '';
-      $('formatted-letter').classList.add('hidden');
-      status('reply-feedback', 'A resposta mudou. Prepare a carta novamente para atualizar a prévia.');
-    }
-  });
   $('reply-form').addEventListener('submit',replyLetter);
   $('delete-letter').addEventListener('click', async () => {
     if (!currentLetter || !window.confirm('Excluir permanentemente esta carta e a resposta armazenada? Esta ação não pode ser desfeita.')) return;
