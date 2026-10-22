@@ -209,3 +209,14 @@ a,button,input,textarea{transition:border-color .16s,box-shadow .16s,background-
 .club-admin-row em{font:italic 18px var(--font-serif);color:#e0b9c9;white-space:nowrap}
 @media(max-width:790px){.club-layout{grid-template-columns:1fr}.club-section{padding:75px 0}.club-intro h2{font-size:37px}.club-admin-row{align-items:flex-start;flex-direction:column;gap:5px}}
 @media(max-width:540px){.club-panel{padding:7px}.club-panel-inner{padding:22px 17px}.club-confirm-page{padding:48px 15px}.club-form .btn{width:100%}}
+
+/* Clube: avisos do gabinete */
+.club-notify-panel{margin:26px 0 22px;padding:23px 25px;border:1px solid #816475;background:linear-gradient(125deg,#382935,#2b202b)}
+.club-notify-panel h3{font:400 28px/1.2 var(--font-serif);color:#f5dfd7;margin:0 0 12px}
+.club-notify-panel p{font:14px/1.65 var(--font-ui);color:#e2cbd0;margin:0 0 17px}
+.club-notify-panel .admin-field{display:block;max-width:640px}
+.club-notify-panel select{display:block;width:100%;min-height:47px;margin:8px 0 0;padding:12px 14px;background:#1c161e;color:#f5e6dd;border:1px solid #9c7e8b;font:15px/1.4 var(--font-ui)}
+.club-notify-actions{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:17px 0}
+.club-notify-actions button{min-height:47px}
+.club-notify-panel #club-notify-feedback{margin:10px 0!important;overflow-wrap:anywhere}
+@media(max-width:560px){.club-notify-panel{padding:18px 14px}.club-notify-actions button{width:100%}}
