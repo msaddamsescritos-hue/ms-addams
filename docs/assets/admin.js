@@ -82,6 +82,24 @@
       const pill = document.createElement('span'); pill.className = `status-pill ${c.published ? '' : 'draft'}`; pill.textContent = c.published ? 'Público' : 'Privado';
       const edit = document.createElement('button'); edit.className = 'outline-btn'; edit.type = 'button'; edit.textContent = 'Editar'; edit.addEventListener('click', () => editChapter(c.id));
       actions.append(pill, edit);
+      if (c.published) {
+        const promo = document.createElement('button'); promo.className = 'outline-btn';
+        promo.type = 'button'; promo.textContent = 'Copiar divulgação ↗';
+        promo.title = 'Copia uma chamada curta, sem spoilers, com o link do capítulo';
+        promo.addEventListener('click', async () => {
+          const quote = clean(c.epigraph || c.body).split(/[.!?]+/).find(x => x.trim().length > 25)?.trim()
+             || clean(c.epigraph || c.body).slice(0, 160);
+          const excerptText = quote.slice(0, 180).trim() + (quote.length > 180 ? '…' : '');
+          const shareText = `“${excerptText}”\n\nCapítulo ${String(c.number).padStart(2,'0')} — ${c.title}\nLeia no blog da Ms. Addams 🖤\nhttps://msaddams.com/capitulo.html?slug=${encodeURIComponent(c.slug)}`;
+          try {
+            await navigator.clipboard.writeText(shareText);
+            promo.textContent = 'Divulgação copiada ✓';
+          } catch (_) {
+            window.prompt('Copie a divulgação para o Instagram:',shareText);
+          }
+        });
+        actions.append(promo);
+      }
       if (c.published) { const link = document.createElement('a'); link.className = 'outline-btn'; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = 'Ver no site'; link.href = `../capitulo.html?slug=${encodeURIComponent(c.slug)}`; actions.append(link); }
       row.append(summary, actions); list.append(row);
     });
@@ -97,7 +115,13 @@
     $('editor-title').textContent = c ? `Editar · Capítulo ${c.number}` : 'Novo capítulo';
     $('delete-chapter').classList.toggle('hidden', !c);
     $('chapter-feedback').textContent = '';
+    updateManuscriptCounters();
     $('editor-block').scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  function updateManuscriptCounters() {
+    const body = $('chapter-body').value.trim();
+    const words = body ? body.split(/\s+/).length : 0;
+    $('manuscript-word-count').textContent = `${new Intl.NumberFormat('pt-BR').format(words)} palavras · cerca de ${Math.max(1, Math.ceil(words / 220))} min de leitura`;
   }
   function editChapter(id) { const c = chapters.find(x => String(x.id) === String(id)); if (c) resetEditor(c); }
   function formChapter(published) {
@@ -292,6 +316,7 @@
   $('close-editor').addEventListener('click',()=>$('editor-block').classList.add('hidden'));
   $('chapter-title').addEventListener('input',()=>{if (!$('chapter-id').value) $('chapter-slug').value = `capitulo-${$('chapter-number').value}-${slugify($('chapter-title').value)}`;});
   $('chapter-number').addEventListener('input',()=>{if (!$('chapter-id').value) $('chapter-slug').value = `capitulo-${$('chapter-number').value}-${slugify($('chapter-title').value)}`;});
+  $('chapter-body').addEventListener('input', updateManuscriptCounters);
   $('chapter-form').querySelectorAll('button[type="submit"]').forEach(btn => btn.addEventListener('click',() => {submitIntent = btn.dataset.action;}));
   $('chapter-form').addEventListener('submit',e=>{e.preventDefault();saveChapter(submitIntent==='publish');});
   $('delete-chapter').addEventListener('click',deleteChapter);
