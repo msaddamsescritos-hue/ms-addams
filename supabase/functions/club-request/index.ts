@@ -68,9 +68,10 @@ Deno.serve(async request => {
   try {
     const server = serverClient();
     const {data:existing,error:readError} = await server.from('club_subscribers')
-      .select('id,status,last_action_mail_at').eq('email',email).maybeSingle();
+      .select('id,status,last_confirmation_sent_at,last_unsubscribe_sent_at').eq('email',email).maybeSingle();
     if (readError) throw readError;
-    const cooldown = existing?.last_action_mail_at && Date.now()-new Date(existing.last_action_mail_at).getTime() < 10*60*1000;
+    const lastSent = action === 'subscribe' ? existing?.last_confirmation_sent_at : existing?.last_unsubscribe_sent_at;
+    const cooldown = lastSent && Date.now()-new Date(lastSent).getTime() < 10*60*1000;
     if (cooldown || (action === 'subscribe' && existing?.status === 'confirmed') || (action === 'leave' && existing?.status !== 'confirmed')) {
       return json({ok:true,message:generic});
     }
@@ -92,7 +93,7 @@ Deno.serve(async request => {
       const id = existing!.id;
       const signature = await hmac(secret,'club-unsubscribe:' + id);
       const link = 'https://msaddams.com/clube.html#unsubscribe=' + id + '.' + signature;
-      const {error:writeError} = await server.from('club_subscribers').update({last_action_mail_at:new Date().toISOString()}).eq('id',id);
+      const {error:writeError} = await server.from('club_subscribers').update({last_unsubscribe_sent_at:new Date().toISOString()}).eq('id',id);
       if (writeError) throw writeError;
       await sendMail(email,'Confirme seu cancelamento | Ms. Addams',link,'leave',apiKey,from);
     }
