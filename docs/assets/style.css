@@ -94,3 +94,19 @@ a,button,input,textarea{transition:border-color .16s,box-shadow .16s,background-
 .traffic-feedback.error{color:#f1afb2}
 @media(max-width:760px){.traffic-heading{align-items:flex-start;flex-direction:column}.traffic-metrics{gap:7px}.traffic-metric{padding:15px 10px}.traffic-metric span{font-size:9px;letter-spacing:.07em}.traffic-chart{gap:5px}.admin-toolbar{gap:8px}}
 @media(max-width:530px){.topbar nav .gabinete-link{padding:7px 9px}.admin-toolbar .admin-label{display:none}.traffic-panel{padding:20px 14px}.traffic-metric strong{font-size:32px}.traffic-day-label{font-size:9px}}
+
+
+/* Ms. Addams — refinamentos editoriais e organização do gabinete */
+.reading-time{font:600 12px/1.5 'DM Sans',Arial,sans-serif!important;letter-spacing:.1em;text-transform:uppercase;color:#d7b8c4!important;margin:14px 0 19px!important}
+.chapter-card .reading-time{color:#d3b8c3!important;font-size:11px!important;margin:14px 0 18px!important}
+.chapter-navigation{display:flex;justify-content:space-between;flex-wrap:wrap;gap:14px;margin:34px 0 15px}
+.chapter-nav-link{display:inline-flex;max-width:100%;font:500 13px/1.55 'DM Sans',Arial,sans-serif;text-decoration:none;color:#f5e1d7;border:1px solid #927584;padding:13px 18px;background:#3d2c3c}
+.chapter-nav-link:hover,.chapter-nav-link:focus-visible{background:#624558;border-color:#d6b8c8}
+.chapter-share-tools{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:20px;padding:22px 0;border-top:1px solid #7e6675}
+.chapter-share-tools button{font:600 12px 'DM Sans',Arial,sans-serif;color:#f6e7dd;border:1px solid #997c8e;background:#3d2d3d;padding:12px 17px}
+.chapter-share-tools button:hover{background:#634859}
+.editor-word-count{margin:0 0 12px;color:#d6bfc8;font:500 12px/1.5 'DM Sans',Arial,sans-serif;letter-spacing:.03em}
+#letter-organization-feedback:not(:empty){margin:8px 0 20px;color:#e7cad2;border-left:2px solid #b593a2;background:#342632;padding:12px 16px}
+#archive-letter{margin:0 7px 0 0;color:#f2d5e0;border-color:#b28b9b}
+#save-letter-draft{margin:10px;border-color:#b593a4;background:#382b3b;color:#f6e9e9;min-height:47px}
+@media(max-width:600px){.chapter-navigation{flex-direction:column}.chapter-nav-link{width:100%;justify-content:center}.chapter-share-tools{align-items:flex-start;flex-direction:column}}
