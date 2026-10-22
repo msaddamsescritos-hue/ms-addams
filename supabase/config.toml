@@ -9,3 +9,10 @@ verify_jwt = false
 
 [functions.delete-letter]
 verify_jwt = false
+
+# Clube de leitores: rotas públicas validam Turnstile, tokens e consentimento.
+[functions.club-request]
+verify_jwt = false
+
+[functions.club-action]
+verify_jwt = false
