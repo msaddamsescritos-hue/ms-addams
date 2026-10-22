@@ -15,6 +15,7 @@
   const configured = Boolean(cfg.supabaseUrl && cfg.supabasePublishableKey && window.supabase);
   const client = configured ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabasePublishableKey) : null;
   let chapters = [], letters = [], currentLetter = null, submitIntent = 'draft';
+  let preparedLetterHtml = '', preparedLetterPlain = '';
   const escapeHtml = v => String(v || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   function status(id, msg, error = false) { const el = $(id); el.textContent = msg; el.className = `form-feedback ${error ? 'error' : 'success'}`; }
   const clean = text => String(text || '').trim();
@@ -221,6 +222,7 @@
     $('reply-body').value = currentLetter.reply_text || '';
     $('formatted-letter').classList.add('hidden');
     $('formatted-letter-preview').replaceChildren();
+    preparedLetterHtml = ''; preparedLetterPlain = '';
     $('reply-template').value = '';
     $('mark-letter-replied').classList.toggle('hidden', currentLetter.status !== 'new');
     $('reply-template').disabled = currentLetter.status !== 'new';
@@ -231,6 +233,40 @@
     $('letter-detail').classList.remove('hidden'); $('letters-list').classList.add('hidden');
     $('letter-detail').scrollIntoView({behavior:'smooth'});
   }
+  async function copyFormattedLetter() {
+    if (!preparedLetterHtml) {
+      status('reply-feedback', 'Prepare a carta antes de copiá-la.', true);
+      return;
+    }
+    let copied = false;
+    try {
+      if (navigator.clipboard?.write && window.ClipboardItem) {
+        await navigator.clipboard.write([new ClipboardItem({
+          'text/html': new Blob([preparedLetterHtml], { type: 'text/html' }),
+          'text/plain': new Blob([preparedLetterPlain], { type: 'text/plain' })
+        })]);
+        copied = true;
+      }
+    } catch (_) { /* tentativa alternativa abaixo */ }
+    if (!copied) {
+      try {
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents($('formatted-letter-preview'));
+        selection.removeAllRanges();
+        selection.addRange(range);
+        copied = document.execCommand('copy');
+        selection.removeAllRanges();
+      } catch (_) { /* mantém a prévia disponível */ }
+    }
+    if (copied) {
+      status('reply-feedback', 'Carta copiada com saudação, despedida e logo. Agora abra o Gmail, remova a assinatura antiga se ela aparecer e cole com Ctrl + V.');
+      $('copy-formatted-letter').textContent = '✓ Copiada! Copiar novamente';
+    } else {
+      status('reply-feedback', 'A cópia automática não foi permitida. Selecione a prévia da carta abaixo, pressione Ctrl + C e depois cole no Gmail com Ctrl + V.', true);
+    }
+  }
+
   async function replyLetter(event) {
     event.preventDefault();
     if (!currentLetter) return;
@@ -266,50 +302,18 @@
     previewBox.innerHTML = htmlLetter;
     $('formatted-letter').classList.remove('hidden');
 
-    const plain = greeting + '\n\n' + introduction + '\n\n' + body + '\n\nAté que nossas palavras se encontrem novamente,\nMs. Addams\nHá histórias que só se revelam no silêncio.';
-    let copied = false;
-    try {
-      if (navigator.clipboard?.write && window.ClipboardItem) {
-        await navigator.clipboard.write([new ClipboardItem({
-          'text/html': new Blob([htmlLetter], {type:'text/html'}),
-          'text/plain': new Blob([plain], {type:'text/plain'})
-        })]);
-        copied = true;
-      }
-    } catch (_) { /* tentativa alternativa abaixo */ }
-    if (!copied) {
-      try {
-        const selection = window.getSelection();
-        const range = document.createRange();
-        range.selectNodeContents(previewBox);
-        selection.removeAllRanges();
-        selection.addRange(range);
-        copied = document.execCommand('copy');
-        selection.removeAllRanges();
-      } catch (_) { /* prévia disponível para seleção manual */ }
-    }
-
+    preparedLetterHtml = htmlLetter;
+    preparedLetterPlain = greeting + '\n\n' + introduction + '\n\n' + body + '\n\nAté que nossas palavras se encontrem novamente,\nMs. Addams\nHá histórias que só se revelam no silêncio.';
+    $('copy-formatted-letter').textContent = '1. Copiar carta formatada';
     const gmailUrl = new URL('https://mail.google.com/mail/');
     gmailUrl.searchParams.set('authuser', 'msaddams.escritos@gmail.com');
     gmailUrl.searchParams.set('view', 'cm');
     gmailUrl.searchParams.set('fs', '1');
     gmailUrl.searchParams.set('to', recipient);
     gmailUrl.searchParams.set('su', 'Uma resposta às suas entrelinhas | Ms. Addams');
-    // Não preencher 'body': ele força texto simples e pode impedir a assinatura do Gmail.
-    const feedback = $('reply-feedback');
-    feedback.replaceChildren();
-    feedback.className = 'form-feedback ' + (copied ? 'success' : 'error');
-    feedback.append(document.createTextNode(copied
-      ? 'Carta formatada copiada! No Gmail, clique no corpo da mensagem e pressione Ctrl + V. '
-      : 'Não foi possível copiar automaticamente. Selecione e copie a prévia da carta abaixo, depois cole no Gmail. '));
-    const link = document.createElement('a');
-    link.href = gmailUrl.toString();
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.referrerPolicy = 'no-referrer';
-    link.textContent = 'Abrir Gmail ↗';
-    feedback.append(link,document.createTextNode(' Confira o remetente e a prévia antes de enviar; se outra assinatura aparecer, retire a duplicada. A carta continuará pendente até sua confirmação.'));
-    link.click();
+    $('open-gmail-compose').href = gmailUrl.toString();
+    status('reply-feedback', 'A carta foi preparada na prévia abaixo, com a nova saudação e despedida. Clique em “Copiar carta formatada”, depois em “Abrir Gmail” e cole no corpo da mensagem com Ctrl + V.');
+    $('formatted-letter').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
   $('login-form').addEventListener('submit', async event => {
     event.preventDefault(); if (!client) return;
@@ -349,6 +353,14 @@
     $('reply-body').focus();
   });
   $('mark-letter-replied').addEventListener('click', confirmLetterSent);
+  $('copy-formatted-letter').addEventListener('click', copyFormattedLetter);
+  $('reply-body').addEventListener('input', () => {
+    if (preparedLetterHtml) {
+      preparedLetterHtml = ''; preparedLetterPlain = '';
+      $('formatted-letter').classList.add('hidden');
+      status('reply-feedback', 'A resposta mudou. Prepare a carta novamente para atualizar a prévia.');
+    }
+  });
   $('reply-form').addEventListener('submit',replyLetter);
   $('delete-letter').addEventListener('click', async () => {
     if (!currentLetter || !window.confirm('Excluir permanentemente esta carta e a resposta armazenada? Esta ação não pode ser desfeita.')) return;
