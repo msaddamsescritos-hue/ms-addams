@@ -10,6 +10,11 @@
       window.history.replaceState(window.history.state, '', pageUrl.pathname + pageUrl.search + pageUrl.hash);
     }
   } catch (_) { /* sem impacto no site */ }
+  // A exclusão é ativada apenas após autenticação e autorização de administradora no gabinete.
+  // O marcador vale para este navegador, inclusive depois de sair do painel.
+  try {
+    if (window.localStorage.getItem('msaddams_owner_visit_exclusion_v1') === '1') return;
+  } catch (_) { /* se armazenamento estiver bloqueado, a contagem continua normalmente */ }
   const cfg = window.ADDAMS_CONFIG || {};
   if (!cfg.supabaseUrl || !cfg.supabasePublishableKey || !window.supabase) return;
   const storeKey = 'msaddams_anon_visit_v1';
