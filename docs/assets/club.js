@@ -53,7 +53,7 @@
         status(output,err.message || 'Não foi possível concluir a solicitação.',true);
         actionButton.disabled=false;
       }
-    },{once:true});
+    });
   }
   async function mountCaptcha(form) {
     const field = form.querySelector('[data-club-turnstile]');
