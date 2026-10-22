@@ -110,3 +110,17 @@ a,button,input,textarea{transition:border-color .16s,box-shadow .16s,background-
 #archive-letter{margin:0 7px 0 0;color:#f2d5e0;border-color:#b28b9b}
 #save-letter-draft{margin:10px;border-color:#b593a4;background:#382b3b;color:#f6e9e9;min-height:47px}
 @media(max-width:600px){.chapter-navigation{flex-direction:column}.chapter-nav-link{width:100%;justify-content:center}.chapter-share-tools{align-items:flex-start;flex-direction:column}}
+
+
+/* Ms. Addams — leitura imersiva v2 */
+.reader-progress{position:sticky;top:0;z-index:20;height:3px;width:100%;background:#402f40;overflow:hidden}
+.reader-progress-fill{display:block;height:100%;width:0%;background:linear-gradient(90deg,#ae859e,#e8c9b4);transition:width .12s linear}
+.reader-controls{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin:24px auto 31px;padding:14px 16px;border-block:1px solid #775e6c;max-width:560px;background:#2e2430}
+.reader-controls-label{font:600 10px/1.6 'DM Sans',Arial,sans-serif;letter-spacing:.14em;color:#e8d0d1;text-transform:uppercase;margin-right:8px}
+.reader-controls button{border:1px solid #9c788a;background:#382b3b;color:#f5e5dc;min-width:42px;min-height:39px;padding:6px 12px;font:600 15px 'DM Sans',Arial,sans-serif}
+.reader-controls button:hover,.reader-controls button:focus-visible{background:#624859;border-color:#d0afc0}
+.reader-controls button:disabled{opacity:.42;cursor:not-allowed}
+.reader-controls-status{font:500 11px/1.5 'DM Sans',Arial,sans-serif;color:#e1c9d1;min-width:58px;font-variant-numeric:tabular-nums}
+#chapter-content .reading-paper p:not(.reader-note):not(.chapter-signature){font-size:var(--reader-font-size,clamp(21px,2.3vw,26px));line-height:1.72}
+@media(max-width:560px){.reader-controls{gap:7px;padding:12px 9px}.reader-controls-label{flex-basis:100%;margin-right:0}.reader-controls button{min-width:47px}}
+@media(prefers-reduced-motion:reduce){.reader-progress-fill{transition:none}}
