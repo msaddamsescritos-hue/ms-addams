@@ -15,6 +15,7 @@
   const configured = Boolean(cfg.supabaseUrl && cfg.supabasePublishableKey && window.supabase);
   const client = configured ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabasePublishableKey) : null;
   let chapters = [], letters = [], currentLetter = null, submitIntent = 'draft';
+  let letterOrganizationEnabled = false;
   const escapeHtml = v => String(v || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   function status(id, msg, error = false) { const el = $(id); el.textContent = msg; el.className = `form-feedback ${error ? 'error' : 'success'}`; }
   const clean = text => String(text || '').trim();
@@ -174,7 +175,11 @@
     const filter = $('letter-filter').value;
     const search = clean($('letter-search').value).toLocaleLowerCase('pt-BR');
     const filtered = letters.filter(l => {
-      const matchesStatus = filter === 'all' || (filter === 'replied' ? l.status === 'replied' : l.status !== 'replied');
+      const archived = Boolean(l.archived_at);
+      const matchesStatus = filter === 'archived' ? archived :
+        !archived && (filter === 'all' || (filter === 'replied' ? l.status === 'replied' :
+          filter === 'unread' ? letterOrganizationEnabled && !l.read_at :
+          l.status !== 'replied'));
       const haystack = [l.alias, l.email, l.message].join(' ').toLocaleLowerCase('pt-BR');
       return matchesStatus && (!search || haystack.includes(search));
     });
@@ -189,7 +194,9 @@
       const summary = document.createElement('div');
       const title = document.createElement('h3'); title.textContent = l.alias || 'Sem pseudônimo';
       const metadata = document.createElement('p');
-      metadata.textContent = `${timestamp(l.created_at)} · ${l.status === 'replied' ? 'Respondida' : l.status === 'sending' ? 'Envio em andamento' : 'Pendente'}`;
+      metadata.textContent = `${timestamp(l.created_at)} · ${l.archived_at ? 'Arquivada' :
+        l.status === 'replied' ? 'Respondida' : l.status === 'sending' ? 'Envio em andamento' :
+        (letterOrganizationEnabled && !l.read_at ? '✧ Não lida' : 'Pendente')}`;
       const preview = document.createElement('p');
       preview.textContent = clean(l.message).slice(0,115) + (l.message?.length > 115 ? '…' : '');
       summary.append(title, metadata, preview);
@@ -200,10 +207,20 @@
     });
   }
   async function loadLetters() {
-    const { data, error } = await client.from('letters').select('id,alias,email,message,status,created_at,replied_at,reply_text').order('created_at', {ascending:false}).limit(200);
+    const { data, error } = await client.from('letters').select('*').order('created_at', {ascending:false}).limit(200);
     if (error) { $('letters-list').textContent = `Erro ao ler cartas: ${error.message}`; return; }
     letters = data || [];
-    $('count-letters').textContent = letters.filter(x => x.status !== 'replied').length;
+    letterOrganizationEnabled = Boolean(letters.length && Object.hasOwn(letters[0], 'read_at') &&
+      Object.hasOwn(letters[0], 'archived_at') && Object.hasOwn(letters[0], 'draft_reply'));
+    $('letter-organization-feedback').textContent = letterOrganizationEnabled || !letters.length ? '' :
+      'Para usar Não lidas, Arquivar e Salvar rascunho, execute db/organizar-correspondencias.sql no SQL Editor do Supabase. As cartas existentes permanecem preservadas.';
+    $('letter-filter').querySelectorAll('option[value="unread"],option[value="archived"]').forEach(option => {
+      option.disabled = !letterOrganizationEnabled;
+    });
+    if (!letterOrganizationEnabled && ['archived','unread'].includes($('letter-filter').value)) {
+      $('letter-filter').value = 'pending';
+    }
+    $('count-letters').textContent = letters.filter(x => x.status !== 'replied' && !x.archived_at).length;
     renderLetters();
   }
   const letterTemplates = {
@@ -236,16 +253,59 @@
         : 'Não foi possível marcar a carta como respondida: ' + (err?.message || 'erro desconhecido'), true);
     } finally { $('mark-letter-replied').disabled = false; }
   }
+  async function manageCurrentLetter(action) {
+    if (!letterOrganizationEnabled || !currentLetter) return;
+    const id = currentLetter.id;
+    const content = action === 'save_draft' ? $('reply-body').value : null;
+    if (action === 'save_draft' && content.length > 10000) {
+      status('reply-feedback', 'O rascunho excede o limite de caracteres.', true); return;
+    }
+    if (action === 'archive' && !window.confirm('Arquivar esta carta? Ela continuará guardada e poderá ser restaurada depois.')) return;
+    $('archive-letter').disabled = true;
+    $('save-letter-draft').disabled = true;
+    try {
+      const {error} = await client.rpc('manage_letter', {p_letter_id:id, p_action:action, p_text:content});
+      if (error) throw error;
+      await loadLetters();
+      if (action === 'save_draft') {
+        openLetter(id);
+        status('reply-feedback', 'Rascunho privado salvo com segurança no banco de dados.');
+      } else {
+        $('letter-detail').classList.add('hidden');
+        $('letters-list').classList.remove('hidden');
+        currentLetter = null;
+        $('letter-organization-feedback').textContent = action === 'archive'
+          ? 'Carta arquivada, sem exclusão. Use o filtro Arquivadas para restaurá-la.'
+          : 'Carta restaurada à lista de correspondências.';
+      }
+    } catch(err) {
+      status('reply-feedback', err.message || 'Não foi possível atualizar esta carta.', true);
+    } finally {
+      $('archive-letter').disabled = false;
+      $('save-letter-draft').disabled = false;
+    }
+  }
   function openLetter(id) {
     currentLetter = letters.find(x => x.id === id);
     if (!currentLetter) return;
     $('letter-heading').textContent = `Carta de ${currentLetter.alias}`;
     $('letter-meta').textContent = `Recebida em ${timestamp(currentLetter.created_at)} · Responder para: ${currentLetter.email}`;
     $('letter-message').textContent = currentLetter.message;
-    $('reply-body').value = currentLetter.reply_text || '';
+    $('reply-body').value = (letterOrganizationEnabled && currentLetter.status === 'new' ? currentLetter.draft_reply : null) || currentLetter.reply_text || '';
     $('reply-template').value = '';
     $('mark-letter-replied').classList.toggle('hidden', currentLetter.status !== 'new');
     $('reply-template').disabled = currentLetter.status !== 'new';
+    $('archive-letter').classList.toggle('hidden', !letterOrganizationEnabled);
+    $('archive-letter').textContent = currentLetter.archived_at ? 'Restaurar carta do arquivo' : 'Arquivar carta';
+    $('save-letter-draft').classList.toggle('hidden', !letterOrganizationEnabled || currentLetter.status !== 'new');
+    if (letterOrganizationEnabled && !currentLetter.read_at) {
+      client.rpc('manage_letter', {p_letter_id: currentLetter.id, p_action: 'mark_read'}).then(({error}) => {
+        if (!error && currentLetter) {
+          currentLetter.read_at = new Date().toISOString();
+          renderLetters();
+        }
+      }).catch(()=>{});
+    }
     const answered = currentLetter.status === 'replied';
     $('send-reply').disabled = answered || currentLetter.status === 'sending';
     $('send-reply').textContent = answered ? 'Carta já respondida' : currentLetter.status === 'sending' ? 'Envio em andamento' : 'Preparar resposta no Gmail →';
@@ -342,6 +402,8 @@
     $('reply-body').focus();
   });
   $('mark-letter-replied').addEventListener('click', confirmLetterSent);
+  $('archive-letter').addEventListener('click', () => manageCurrentLetter(currentLetter?.archived_at ? 'restore' : 'archive'));
+  $('save-letter-draft').addEventListener('click', () => manageCurrentLetter('save_draft'));
   $('reply-form').addEventListener('submit',replyLetter);
   $('delete-letter').addEventListener('click', async () => {
     if (!currentLetter || !window.confirm('Excluir permanentemente esta carta e a resposta armazenada? Esta ação não pode ser desfeita.')) return;
