@@ -192,7 +192,7 @@
     // Saudação discreta usando o pseudônimo informado pelo leitor.
     const alias = clean(currentLetter.alias).slice(0, 80);
     const greeting = alias ? `Olá, ${alias},` : 'Olá,';
-    const emailBody = `${greeting}\n\n${body}\n\nCom discrição,\nMs. Addams\nO Arquivo das Entrelinhas\nhttps://msaddams.com/`;
+    const emailBody = `${greeting}\n\n${body}\n\n`; // A assinatura visual será adicionada pelo Gmail.
     gmailUrl.searchParams.set('su', 'Uma resposta às suas entrelinhas | Ms. Addams');
     gmailUrl.searchParams.set('body', emailBody);
     // O link visível permite abrir manualmente se o navegador bloquear a nova aba.
