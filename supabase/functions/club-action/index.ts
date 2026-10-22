@@ -1,4 +1,19 @@
-import { cors, json, serverClient } from '../_shared/mod.ts';
+const cors = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Cache-Control': 'no-store',
+  'X-Content-Type-Options': 'nosniff'
+};
+const json = (body:Record<string,unknown>, status=200) =>
+  new Response(JSON.stringify(body),{status,headers:{...cors,'Content-Type':'application/json; charset=utf-8'}});
+const serverClient = () => {
+  const url=Deno.env.get('SUPABASE_URL');
+  const key=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if(!url||!key)throw new Error('Servidor não configurado.');
+  return createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
+};
+import {createClient} from 'npm:@supabase/supabase-js@2';
 
 const validId = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 const hex = (buf: Uint8Array) => Array.from(buf).map(b=>b.toString(16).padStart(2,'0')).join('');
