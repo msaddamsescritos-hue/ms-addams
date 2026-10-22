@@ -191,14 +191,20 @@
     gmailUrl.searchParams.set('to', recipient);
     gmailUrl.searchParams.set('su', 'Uma resposta de Ms. Addams');
     gmailUrl.searchParams.set('body', body + '\n\nCom carinho,\nMs. Addams');
+    // O link visível permite abrir manualmente se o navegador bloquear a nova aba.
+    const feedback = $('reply-feedback');
+    feedback.replaceChildren();
+    feedback.className = 'form-feedback success';
+    feedback.append(document.createTextNode('Rascunho preparado. Se o Gmail não abriu em outra aba, clique aqui: '));
     const link = document.createElement('a');
     link.href = gmailUrl.toString();
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
-    document.body.appendChild(link);
+    link.referrerPolicy = 'no-referrer';
+    link.textContent = 'Abrir resposta no Gmail ↗';
+    feedback.append(link, document.createTextNode('. Confira se o remetente é msaddams.escritos@gmail.com e envie manualmente. A carta continuará pendente no gabinete; abrir o Gmail não confirma o envio.'));
+    // Tenta abrir imediatamente, mas nunca depende da liberação de pop-ups.
     link.click();
-    link.remove();
-    status('reply-feedback', 'Gmail solicitado. Confira a conta remetente e clique em Enviar no Gmail. Esta carta continuará pendente no gabinete; abrir o Gmail não confirma o envio.');
   }
   $('login-form').addEventListener('submit', async event => {
     event.preventDefault(); if (!client) return;
