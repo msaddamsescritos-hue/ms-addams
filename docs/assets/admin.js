@@ -219,6 +219,8 @@
     $('letter-meta').textContent = `Recebida em ${timestamp(currentLetter.created_at)} · Responder para: ${currentLetter.email}`;
     $('letter-message').textContent = currentLetter.message;
     $('reply-body').value = currentLetter.reply_text || '';
+    $('formatted-letter').classList.add('hidden');
+    $('formatted-letter-preview').replaceChildren();
     $('reply-template').value = '';
     $('mark-letter-replied').classList.toggle('hidden', currentLetter.status !== 'new');
     $('reply-template').disabled = currentLetter.status !== 'new';
@@ -233,36 +235,79 @@
     event.preventDefault();
     if (!currentLetter) return;
     const body = clean($('reply-body').value);
-    if (body.length < 2 || body.length > 10000) { status('reply-feedback', 'A resposta deve conter entre 2 e 10.000 caracteres.', true); return; }
+    if (body.length < 2 || body.length > 10000) {
+      status('reply-feedback', 'A resposta deve conter entre 2 e 10.000 caracteres.', true);
+      return;
+    }
     const recipient = clean(currentLetter.email);
     if (!recipient || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
       status('reply-feedback', 'Esta carta não tem um e-mail válido para resposta.', true);
       return;
     }
+    const alias = clean(currentLetter.alias).slice(0, 80);
+    const greeting = alias ? `Olá, ${alias},` : 'Olá,';
+    const formattedBody = body.split(/\n\s*\n/).filter(Boolean).map(paragraph =>
+      '<p style="margin:0 0 20px 0;white-space:pre-wrap;color:#332b32;font-family:Georgia,serif;font-size:19px;line-height:1.68;">' +
+      escapeHtml(paragraph) + '</p>'
+    ).join('');
+    const logoUrl = 'https://msaddams.com/assets/ms-addams-logo-email.png';
+    const htmlLetter = `<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="width:100%;max-width:650px;border-collapse:collapse;background:#fcf9f6;color:#332b32;font-family:Georgia,serif"><tbody><tr><td style="padding:36px 34px 32px 34px;border-top:4px solid #6b4859;border-left:1px solid #dfcdd0;border-right:1px solid #dfcdd0;border-bottom:1px solid #dfcdd0">
+    <p style="font:11px Arial,sans-serif;letter-spacing:2px;color:#9a7182;margin:0 0 13px">CORRESPONDÊNCIA PARTICULAR</p>
+    <p style="border-top:1px solid #d9c1c6;margin:0 0 28px"></p>
+    <p style="margin:0 0 23px;color:#69495b;font:italic 23px Georgia,serif">${escapeHtml(greeting)}</p>
+    ${formattedBody}
+    <p style="margin:36px 0 8px;font:italic 21px Georgia,serif;color:#6b4859">Com discrição,</p>
+    <p style="margin:0 0 19px;color:#8a6a7b;font:italic 17px Georgia,serif">Há histórias que só se revelam no silêncio.</p>
+    <p style="border-top:1px solid #d9c1c6;margin:0 0 18px"></p>
+    <img src="${logoUrl}" alt="Ms. Addams — Correspondência particular" width="312" height="73" style="display:block;width:312px;max-width:100%;height:auto;border:0">
+    </td></tr></tbody></table>`;
+    const previewBox = $('formatted-letter-preview');
+    previewBox.innerHTML = htmlLetter;
+    $('formatted-letter').classList.remove('hidden');
+
+    const plain = greeting + '\n\n' + body + '\n\nCom discrição,\nMs. Addams\nHá histórias que só se revelam no silêncio.';
+    let copied = false;
+    try {
+      if (navigator.clipboard?.write && window.ClipboardItem) {
+        await navigator.clipboard.write([new ClipboardItem({
+          'text/html': new Blob([htmlLetter], {type:'text/html'}),
+          'text/plain': new Blob([plain], {type:'text/plain'})
+        })]);
+        copied = true;
+      }
+    } catch (_) { /* tentativa alternativa abaixo */ }
+    if (!copied) {
+      try {
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(previewBox);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        copied = document.execCommand('copy');
+        selection.removeAllRanges();
+      } catch (_) { /* prévia disponível para seleção manual */ }
+    }
+
     const gmailUrl = new URL('https://mail.google.com/mail/');
     gmailUrl.searchParams.set('authuser', 'msaddams.escritos@gmail.com');
     gmailUrl.searchParams.set('view', 'cm');
     gmailUrl.searchParams.set('fs', '1');
     gmailUrl.searchParams.set('to', recipient);
-    // Saudação discreta usando o pseudônimo informado pelo leitor.
-    const alias = clean(currentLetter.alias).slice(0, 80);
-    const greeting = alias ? `Olá, ${alias},` : 'Olá,';
-    const emailBody = `${greeting}\n\n${body}\n\n`; // A assinatura visual será adicionada pelo Gmail.
     gmailUrl.searchParams.set('su', 'Uma resposta às suas entrelinhas | Ms. Addams');
-    gmailUrl.searchParams.set('body', emailBody);
-    // O link visível permite abrir manualmente se o navegador bloquear a nova aba.
+    // Não preencher 'body': ele força texto simples e pode impedir a assinatura do Gmail.
     const feedback = $('reply-feedback');
     feedback.replaceChildren();
-    feedback.className = 'form-feedback success';
-    feedback.append(document.createTextNode('Rascunho preparado. Se o Gmail não abriu em outra aba, clique aqui: '));
+    feedback.className = 'form-feedback ' + (copied ? 'success' : 'error');
+    feedback.append(document.createTextNode(copied
+      ? 'Carta formatada copiada! No Gmail, clique no corpo da mensagem e pressione Ctrl + V. '
+      : 'Não foi possível copiar automaticamente. Selecione e copie a prévia da carta abaixo, depois cole no Gmail. '));
     const link = document.createElement('a');
     link.href = gmailUrl.toString();
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
     link.referrerPolicy = 'no-referrer';
-    link.textContent = 'Abrir resposta no Gmail ↗';
-    feedback.append(link, document.createTextNode('. Confira se o remetente é msaddams.escritos@gmail.com e envie manualmente. A carta continuará pendente no gabinete; abrir o Gmail não confirma o envio.'));
-    // Tenta abrir imediatamente, mas nunca depende da liberação de pop-ups.
+    link.textContent = 'Abrir Gmail ↗';
+    feedback.append(link,document.createTextNode(' Confira o remetente e a prévia antes de enviar; se outra assinatura aparecer, retire a duplicada. A carta continuará pendente até sua confirmação.'));
     link.click();
   }
   $('login-form').addEventListener('submit', async event => {
