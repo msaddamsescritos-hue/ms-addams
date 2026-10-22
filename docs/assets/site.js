@@ -177,22 +177,59 @@
     increase.addEventListener('click', () => { sizeIndex = Math.min(sizes.length - 1, sizeIndex + 1); applySize(); });
     controls.append(controlLabel, decrease, sizeStatus, increase);
     header.append(controls);
+    const readingFavorite = elem('div', 'reading-bookmarks');
+    readingFavorite.append(favoriteButton(slug));
+    header.append(readingFavorite);
     applySize();
 
     // Indicador local de leitura: não registra páginas, identidade ou progresso no servidor.
     const track = $('#reader-progress');
     const fill = $('#reader-progress-fill');
     if (track && fill) {
+      const previous = readProgress(slug);
+      if (previous !== null) {
+        const resume = elem('aside','resume-reading');
+        const prompt = elem('p','','Sua última página continua guardada neste navegador.');
+        const resumeButton = elem('button','resume-reading-button','✧ Continuar a leitura · ' + Math.round(previous * 100) + '%');
+        resumeButton.type = 'button';
+        resumeButton.addEventListener('click', () => {
+          const paperStart = window.scrollY + paper.getBoundingClientRect().top;
+          const y = Math.max(0, paperStart + previous * paper.offsetHeight - window.innerHeight * .28);
+          window.scrollTo({top:y,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+          resume.remove();
+        });
+        resume.append(prompt,resumeButton);
+        header.append(resume);
+      }
+      let latestRatio = 0;
+      let lastSaved = 0;
+      let saveTimer = null;
       const updateReadingProgress = () => {
         const rect = paper.getBoundingClientRect();
         const viewport = window.innerHeight || 1;
-        const readFraction = (viewport * 0.28 - rect.top) / Math.max(rect.height, 1);
-        const percent = Math.max(0, Math.min(100, Math.round(readFraction * 100)));
+        const ratio = Math.max(0, Math.min(1, (viewport * .28 - rect.top) / Math.max(rect.height,1)));
+        const percent = Math.round(ratio * 100);
         fill.style.width = percent + '%';
         track.setAttribute('aria-valuenow', String(percent));
+        if (ratio >= .08 && ratio < .97) {
+          latestRatio = ratio;
+          if (Math.abs(ratio - lastSaved) >= .015 && saveTimer === null) {
+            saveTimer = window.setTimeout(() => {
+              saveTimer = null;
+              if (latestRatio >= .08 && latestRatio < .97) {
+                saveProgress(slug,latestRatio);
+                lastSaved = latestRatio;
+              }
+            },850);
+          }
+        }
       };
-      window.addEventListener('scroll', updateReadingProgress, { passive: true });
+      window.addEventListener('scroll', updateReadingProgress, {passive:true});
       window.addEventListener('resize', updateReadingProgress);
+      window.addEventListener('pagehide', () => {
+        if (saveTimer !== null) clearTimeout(saveTimer);
+        if (latestRatio >= .08 && latestRatio < .97) saveProgress(slug, latestRatio);
+      });
       updateReadingProgress();
     }
 
@@ -205,17 +242,25 @@
       if (!error) library = data || [];
     }
     const at = library.findIndex(c => c.number === chapter.number);
-    if (at >= 0 && library.length > 1) {
+    if (at > 0) {
+      const prev = library[at - 1];
       const nav = elem('nav','chapter-navigation');
       nav.setAttribute('aria-label','Navegar entre manuscritos publicados');
-      const createNav = (target, label) => {
-        const a = elem('a','chapter-nav-link', label + ' · ' + target.title);
-        a.href = 'capitulo.html?slug=' + encodeURIComponent(target.slug);
-        return a;
-      };
-      if (at > 0) nav.append(createNav(library[at - 1], '← Anterior'));
-      if (at < library.length - 1) nav.append(createNav(library[at + 1], 'Próximo →'));
-      root.append(nav);
+      const back = elem('a','chapter-nav-link','← Manuscrito anterior · ' + prev.title);
+      back.href = 'capitulo.html?slug=' + encodeURIComponent(prev.slug);
+      nav.append(back); root.append(nav);
+    }
+    if (at >= 0 && at < library.length - 1) {
+      const next = library[at + 1];
+      const teaser = elem('aside','next-manuscript');
+      teaser.append(elem('span','kicker','OUTRO MANUSCRITO AGUARDA'));
+      teaser.append(elem('h2','','Há sempre outra página à espera.'));
+      teaser.append(elem('p','','Algumas respostas talvez habitem a próxima história.'));
+      teaser.append(elem('h3','',next.title));
+      const link = elem('a','next-manuscript-link','Descobrir o próximo manuscrito →');
+      link.href = 'capitulo.html?slug=' + encodeURIComponent(next.slug);
+      teaser.append(link);
+      root.append(teaser);
     }
     const share = elem('div','chapter-share-tools');
     const shareLabel = elem('span','kicker','ESTE MANUSCRITO TOCOU VOCÊ?');
