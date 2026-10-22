@@ -299,16 +299,18 @@
     $('archive-letter').textContent = currentLetter.archived_at ? 'Restaurar carta do arquivo' : 'Arquivar carta';
     $('save-letter-draft').classList.toggle('hidden', !letterOrganizationEnabled || currentLetter.status !== 'new');
     if (letterOrganizationEnabled && !currentLetter.read_at) {
-      client.rpc('manage_letter', {p_letter_id: currentLetter.id, p_action: 'mark_read'}).then(({error}) => {
-        if (!error && currentLetter) {
-          currentLetter.read_at = new Date().toISOString();
+      const letterId = currentLetter.id;
+      client.rpc('manage_letter', {p_letter_id: letterId, p_action: 'mark_read'}).then(({error}) => {
+        if (!error) {
+          const updated = letters.find(letter => letter.id === letterId);
+          if (updated) updated.read_at = new Date().toISOString();
           renderLetters();
         }
       }).catch(()=>{});
     }
     const answered = currentLetter.status === 'replied';
     $('send-reply').disabled = answered || currentLetter.status === 'sending';
-    $('send-reply').textContent = answered ? 'Carta já respondida' : currentLetter.status === 'sending' ? 'Envio em andamento' : 'Preparar resposta no Gmail →';
+    $('send-reply').textContent = answered ? 'Carta já respondida' : currentLetter.status === 'sending' ? 'Envio em andamento' : 'Abrir minha carta pronta no Gmail →';
     $('reply-feedback').textContent = answered ? `Resposta enviada em ${timestamp(currentLetter.replied_at)}.` : '';
     $('letter-detail').classList.remove('hidden'); $('letters-list').classList.add('hidden');
     $('letter-detail').scrollIntoView({behavior:'smooth'});
