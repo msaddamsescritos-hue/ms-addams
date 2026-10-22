@@ -16,6 +16,7 @@ create table if not exists public.club_subscribers (
   confirmation_expires_at timestamptz,
   last_confirmation_sent_at timestamptz,
   last_action_mail_at timestamptz,
+  last_unsubscribe_sent_at timestamptz,
   constraint club_email_valid check (char_length(email) between 5 and 254),
   constraint club_hash_valid check (confirmation_hash is null or char_length(confirmation_hash) = 64)
 );
