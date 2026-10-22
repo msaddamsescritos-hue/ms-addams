@@ -26,6 +26,8 @@
     if (error || !session) { showLogin(); return; }
     const { data, error: adminError } = await client.from('site_admins').select('user_id').eq('user_id', session.user.id).maybeSingle();
     if (adminError || !data) { await client.auth.signOut(); status('login-feedback', 'Esta conta não foi autorizada como administradora.', true); showLogin(); return; }
+    // Somente uma sessão verificada como administradora ativa a exclusão neste navegador.
+    try { window.localStorage.setItem('msaddams_owner_visit_exclusion_v1', '1'); } catch (_) {}
     $('login-layout').classList.add('hidden'); $('dashboard').classList.remove('hidden');
     await Promise.all([loadChapters(), loadLetters(), loadTraffic()]);
   }
@@ -142,23 +144,73 @@
       $(`section-${t}`).classList.toggle('hidden', !selected);
     }
   }
+  // Filtros e busca são locais: nenhuma carta é alterada ao pesquisar.
+  function renderLetters() {
+    const list = $('letters-list'); list.replaceChildren();
+    const filter = $('letter-filter').value;
+    const search = clean($('letter-search').value).toLocaleLowerCase('pt-BR');
+    const filtered = letters.filter(l => {
+      const matchesStatus = filter === 'all' || (filter === 'replied' ? l.status === 'replied' : l.status !== 'replied');
+      const haystack = [l.alias, l.email, l.message].join(' ').toLocaleLowerCase('pt-BR');
+      return matchesStatus && (!search || haystack.includes(search));
+    });
+    $('letter-filter-count').textContent = `${filtered.length} de ${letters.length} cartas exibidas`;
+    if (!filtered.length) {
+      const empty = document.createElement('p'); empty.className = 'empty-state';
+      empty.textContent = letters.length ? 'Nenhuma carta corresponde à pesquisa ou ao filtro.' : 'Ainda não há cartas recebidas.';
+      list.append(empty); return;
+    }
+    filtered.forEach(l => {
+      const row = document.createElement('div'); row.className = 'admin-row';
+      const summary = document.createElement('div');
+      const title = document.createElement('h3'); title.textContent = l.alias || 'Sem pseudônimo';
+      const metadata = document.createElement('p');
+      metadata.textContent = `${timestamp(l.created_at)} · ${l.status === 'replied' ? 'Respondida' : l.status === 'sending' ? 'Envio em andamento' : 'Pendente'}`;
+      const preview = document.createElement('p');
+      preview.textContent = clean(l.message).slice(0,115) + (l.message?.length > 115 ? '…' : '');
+      summary.append(title, metadata, preview);
+      const action = document.createElement('button'); action.className = 'outline-btn';
+      action.type = 'button'; action.textContent = 'Abrir carta';
+      action.addEventListener('click', () => openLetter(l.id));
+      row.append(summary, action); list.append(row);
+    });
+  }
   async function loadLetters() {
     const { data, error } = await client.from('letters').select('id,alias,email,message,status,created_at,replied_at,reply_text').order('created_at', {ascending:false}).limit(200);
     if (error) { $('letters-list').textContent = `Erro ao ler cartas: ${error.message}`; return; }
     letters = data || [];
     $('count-letters').textContent = letters.filter(x => x.status !== 'replied').length;
-    const list = $('letters-list'); list.replaceChildren();
-    if (!letters.length) { const el = document.createElement('p'); el.className = 'empty-state'; el.textContent = 'Ainda não há cartas recebidas.'; list.append(el); return; }
-    letters.forEach(l => {
-      const row = document.createElement('div'); row.className = 'admin-row';
-      const summary = document.createElement('div');
-      const title = document.createElement('h3'); title.textContent = l.alias || 'Sem pseudônimo';
-      const metadata = document.createElement('p'); metadata.textContent = `${timestamp(l.created_at)} · ${l.status === 'replied' ? 'Respondida' : l.status === 'sending' ? 'Enviando' : 'Aguardando resposta'}`;
-      const preview = document.createElement('p'); preview.textContent = clean(l.message).slice(0,115) + (l.message?.length > 115 ? '…' : '');
-      summary.append(title,metadata,preview);
-      const action = document.createElement('button'); action.className = 'outline-btn'; action.type = 'button'; action.textContent = 'Abrir carta'; action.addEventListener('click', () => openLetter(l.id));
-      row.append(summary,action); list.append(row);
-    });
+    renderLetters();
+  }
+  const letterTemplates = {
+    gentle: 'Recebi suas palavras com atenção. Obrigada por confiar a mim um pouco da sua história.\n\n',
+    reflective: 'Há perguntas que não encontram respostas imediatas, mas merecem ser acolhidas. Ao ler sua carta, pensei em algo que gostaria de compartilhar:\n\n',
+    discreet: 'Algumas histórias pedem delicadeza, e a sua merece ser recebida com respeito.\n\n',
+    grateful: 'Agradeço por dedicar um pouco do seu tempo para me escrever. Sua mensagem chegou até mim e foi lida com carinho.\n\n'
+  };
+  async function confirmLetterSent() {
+    if (!currentLetter || currentLetter.status !== 'new') return;
+    const body = clean($('reply-body').value);
+    if (body.length < 2 || body.length > 10000) {
+      status('reply-feedback', 'Antes de confirmar, mantenha no campo o texto enviado pelo Gmail (2 a 10.000 caracteres).', true);
+      return;
+    }
+    if (!window.confirm('Você já clicou em ENVIAR no Gmail e confirmou o envio? Isso marcará a carta como respondida no gabinete.')) return;
+    const id = currentLetter.id;
+    $('mark-letter-replied').disabled = true;
+    status('reply-feedback', 'Registrando a confirmação…');
+    try {
+      const { error } = await client.rpc('mark_letter_replied', {p_letter_id: id, p_reply_text: body});
+      if (error) throw error;
+      await loadLetters();
+      openLetter(id);
+      status('reply-feedback', 'Correspondência registrada como respondida. O histórico foi preservado.');
+    } catch (err) {
+      const unavailable = /mark_letter_replied|schema cache|could not find the function/i.test(String(err?.message || ''));
+      status('reply-feedback', unavailable
+        ? 'O controle ainda precisa ser ativado no banco Supabase. A carta continua pendente, sem alterações.'
+        : 'Não foi possível marcar a carta como respondida: ' + (err?.message || 'erro desconhecido'), true);
+    } finally { $('mark-letter-replied').disabled = false; }
   }
   function openLetter(id) {
     currentLetter = letters.find(x => x.id === id);
@@ -167,6 +219,9 @@
     $('letter-meta').textContent = `Recebida em ${timestamp(currentLetter.created_at)} · Responder para: ${currentLetter.email}`;
     $('letter-message').textContent = currentLetter.message;
     $('reply-body').value = currentLetter.reply_text || '';
+    $('reply-template').value = '';
+    $('mark-letter-replied').classList.toggle('hidden', currentLetter.status !== 'new');
+    $('reply-template').disabled = currentLetter.status !== 'new';
     const answered = currentLetter.status === 'replied';
     $('send-reply').disabled = answered || currentLetter.status === 'sending';
     $('send-reply').textContent = answered ? 'Carta já respondida' : currentLetter.status === 'sending' ? 'Envio em andamento' : 'Preparar resposta no Gmail →';
@@ -236,6 +291,18 @@
   $('refresh-traffic').addEventListener('click',loadTraffic);
   $('refresh-letters').addEventListener('click',loadLetters);
   $('close-letter').addEventListener('click',()=>{$('letter-detail').classList.add('hidden');$('letters-list').classList.remove('hidden');});
+  $('letter-search').addEventListener('input', renderLetters);
+  $('letter-filter').addEventListener('change', renderLetters);
+  $('reply-template').addEventListener('change', () => {
+    const chosen = $('reply-template').value;
+    if (!letterTemplates[chosen] || !currentLetter || currentLetter.status !== 'new') return;
+    if (clean($('reply-body').value) && !window.confirm('Substituir o texto atual pelo modelo selecionado?')) {
+      $('reply-template').value = ''; return;
+    }
+    $('reply-body').value = letterTemplates[chosen];
+    $('reply-body').focus();
+  });
+  $('mark-letter-replied').addEventListener('click', confirmLetterSent);
   $('reply-form').addEventListener('submit',replyLetter);
   $('delete-letter').addEventListener('click', async () => {
     if (!currentLetter || !window.confirm('Excluir permanentemente esta carta e a resposta armazenada? Esta ação não pode ser desfeita.')) return;
