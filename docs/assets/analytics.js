@@ -2,6 +2,14 @@
 // Depende da funcao public.register_site_visit() criada pelo SQL de estatisticas.
 (() => {
   'use strict';
+  // Oculta o parâmetro de origem do ChatGPT sem alterar outros parâmetros.
+  try {
+    const pageUrl = new URL(window.location.href);
+    if (pageUrl.searchParams.get('utm_source') === 'chatgpt.com') {
+      pageUrl.searchParams.delete('utm_source');
+      window.history.replaceState(window.history.state, '', pageUrl.pathname + pageUrl.search + pageUrl.hash);
+    }
+  } catch (_) { /* sem impacto no site */ }
   const cfg = window.ADDAMS_CONFIG || {};
   if (!cfg.supabaseUrl || !cfg.supabasePublishableKey || !window.supabase) return;
   const storeKey = 'msaddams_anon_visit_v1';
