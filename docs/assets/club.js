@@ -24,21 +24,36 @@
     if (!res.ok) throw new Error(answer.error || 'Serviço temporariamente indisponível.');
     return answer;
   }
-  async function handleActionLink() {
-    const output = document.getElementById('club-link-status');
-    if (!output) return;
-    const match = /^#(confirm|unsubscribe)=([0-9a-f-]{36}\.[0-9a-f]{64})$/i.exec(readHash);
+  function handleActionLink() {
+    const output=document.getElementById('club-link-status');
+    const actionButton=document.getElementById('club-link-confirm');
+    if (!output || !actionButton) return;
+    const match=/^#(confirm|unsubscribe)=([0-9a-f-]{36}\.[0-9a-f]{64})$/i.exec(readHash);
     if (!match) {
       if (readHash.startsWith('#confirm=') || readHash.startsWith('#unsubscribe=')) {
-        status(output, 'Este link não parece válido. Solicite uma nova mensagem.',true);
+        status(output,'Este link não parece válido. Solicite uma nova mensagem.',true);
       }
       return;
     }
-    status(output, match[1]==='confirm' ? 'Confirmando sua entrada no clube…' : 'Registrando seu cancelamento…');
-    try {
-      const r = await call('club-action', {action:match[1],token:match[2]});
-      status(output,r.message || 'Solicitação concluída.');
-    } catch(e) {status(output,e.message || 'Não foi possível concluir sua solicitação.',true);}
+    const kind=match[1], token=match[2];
+    status(output,kind==='confirm'
+      ? 'Sua carta de convite chegou. Para concluir a inscrição, confirme que deseja receber nossas novidades.'
+      : 'Você deseja realmente deixar o Clube de Leitores? A ação interromperá futuras correspondências.');
+    actionButton.hidden=false;
+    actionButton.textContent=kind==='confirm' ? 'Confirmar minha entrada no clube' : 'Confirmar cancelamento';
+    actionButton.addEventListener('click',async ()=>{
+      if (actionButton.disabled) return;
+      actionButton.disabled=true;
+      status(output,'Registrando sua escolha…');
+      try {
+        const result=await call('club-action',{action:kind,token});
+        status(output,result.message || 'Solicitação concluída.');
+        actionButton.hidden=true;
+      } catch(err) {
+        status(output,err.message || 'Não foi possível concluir a solicitação.',true);
+        actionButton.disabled=false;
+      }
+    },{once:true});
   }
   async function mountCaptcha(form) {
     const field = form.querySelector('[data-club-turnstile]');
