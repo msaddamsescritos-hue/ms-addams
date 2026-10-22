@@ -14,7 +14,7 @@
   const functionUrl = name => `${String(cfg.supabaseUrl || '').replace(/\/$/, '')}/functions/v1/${name}`;
   const configured = Boolean(cfg.supabaseUrl && cfg.supabasePublishableKey && window.supabase);
   const client = configured ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabasePublishableKey) : null;
-  let chapters = [], letters = [], currentLetter = null, submitIntent = 'draft';
+  let chapters = [], letters = [], currentLetter = null;
   let letterOrganizationEnabled = false;
   const escapeHtml = v => String(v || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   function status(id, msg, error = false) { const el = $(id); el.textContent = msg; el.className = `form-feedback ${error ? 'error' : 'success'}`; }
@@ -203,8 +203,15 @@
       if (mode==='preview') {
         status('club-notify-feedback','Confirmados: '+(result.confirmed || 0)+'. Já avisados sobre este capítulo: '+(result.sent || 0)+'. Nenhum e-mail foi enviado nesta consulta.');
       } else {
-        const text='Enviados agora: '+(result.sent || 0)+'. Falhas: '+(result.failed || 0)+'. Cancelados ignorados: '+(result.skipped || 0)+'.';
-        status('club-notify-feedback',text+(result.moreMayRemain ? ' Pode haver outros leitores; envie outro lote se desejar.' : ' Não há indicação de outro lote pendente.'));
+        const processed=Number(result.processed || 0);
+        const sent=Number(result.sent || 0);
+        if (processed === 0) {
+          status('club-notify-feedback',
+            'Nenhum novo aviso foi enviado. Os leitores confirmados podem já ter recebido este capítulo. Clique em “Conferir destinatários” para consultar os envios registrados.');
+        } else {
+          const text='Enviados agora: '+sent+'. Falhas: '+(result.failed || 0)+'. Cancelados ignorados: '+(result.skipped || 0)+'.';
+          status('club-notify-feedback',text+(result.moreMayRemain ? ' Pode haver outros leitores. Confira os destinatários antes de enviar outro lote.' : ' Lote concluído.'));
+        }
       }
     } catch(err) {status('club-notify-feedback',err.message || 'Não foi possível enviar os avisos.',true);}
     finally {sendButton.disabled=false;previewButton.disabled=false;}
@@ -213,6 +220,7 @@
     const feedback = $('club-admin-feedback');
     const list = $('club-admin-list');
     if (!feedback || !list || !client) return;
+    feedback.className = 'form-feedback club-feedback';
     feedback.textContent = 'Consultando os leitores…';
     list.replaceChildren();
     try {
@@ -295,7 +303,7 @@
     const { data, error } = await client.from('letters').select('*').order('created_at', {ascending:false}).limit(200);
     if (error) { $('letters-list').textContent = `Erro ao ler cartas: ${error.message}`; return; }
     letters = data || [];
-    letterOrganizationEnabled = Boolean(letters.length && Object.hasOwn(letters[0], 'read_at') &&
+    letterOrganizationEnabled = !letters.length || Boolean(Object.hasOwn(letters[0], 'read_at') &&
       Object.hasOwn(letters[0], 'archived_at') && Object.hasOwn(letters[0], 'draft_reply'));
     $('letter-organization-feedback').textContent = letterOrganizationEnabled || !letters.length ? '' :
       'Para usar Não lidas, Arquivar e Salvar rascunho, execute db/organizar-correspondencias.sql no SQL Editor do Supabase. As cartas existentes permanecem preservadas.';
@@ -464,8 +472,12 @@
   $('chapter-title').addEventListener('input',()=>{if (!$('chapter-id').value) $('chapter-slug').value = `capitulo-${$('chapter-number').value}-${slugify($('chapter-title').value)}`;});
   $('chapter-number').addEventListener('input',()=>{if (!$('chapter-id').value) $('chapter-slug').value = `capitulo-${$('chapter-number').value}-${slugify($('chapter-title').value)}`;});
   $('chapter-body').addEventListener('input', updateManuscriptCounters);
-  $('chapter-form').querySelectorAll('button[type="submit"]').forEach(btn => btn.addEventListener('click',() => {submitIntent = btn.dataset.action;}));
-  $('chapter-form').addEventListener('submit',e=>{e.preventDefault();saveChapter(submitIntent==='publish');});
+  $('chapter-form').addEventListener('submit',e=>{
+    e.preventDefault();
+    // Não herdar uma intenção antiga de publicar; Enter mantém a opção segura.
+    const intent = e.submitter?.dataset.action || 'draft';
+    saveChapter(intent === 'publish');
+  });
   $('delete-chapter').addEventListener('click',deleteChapter);
   $('preview-chapter').addEventListener('click',()=>{
     const c = formChapter(false);
