@@ -1,0 +1,27 @@
+/* Ms. Addams — entrelinhas: epílogo, reações e trechos guardados */
+.reading-paper.real-page-turn .reader-ending-page{min-height:480px;text-align:center;padding:30px 12px}
+.reading-paper.real-page-turn .reader-ending-page.reader-leaf-active{display:flex;flex-direction:column;align-items:center;justify-content:center}
+.reading-paper .reader-ending-flower{font:36px Georgia,serif;color:#8f6d76;margin:0 auto 20px}
+.reading-paper .reader-ending-title{font:400 clamp(25px,4vw,37px)/1.25 'Cinzel',Georgia,serif;color:#38262f;margin:0 0 22px}
+.reading-paper .reader-ending-text{font:italic clamp(21px,3vw,29px)/1.55 'Cormorant Garamond',Georgia,serif;color:#422934;margin:0 auto 20px;max-width:550px}
+.reading-paper .reader-ending-signature{font:italic 25px Georgia,serif;color:#503843;margin:5px 0 30px}
+.reading-paper .reader-ending-engagement{width:100%;max-width:570px;border-top:1px solid #baa59c;padding-top:23px}
+.reading-paper .v4-ending-content{width:100%;text-align:center}
+.reading-paper .v4-ending-content h3{font:400 25px/1.3 'Cormorant Garamond',Georgia,serif;color:#4a303d;margin:0 0 9px}
+.reading-paper .v4-soft-note{font:15px/1.5 'Cormorant Garamond',Georgia,serif;color:#614a55;margin:8px auto 15px}
+.reading-paper .v4-reaction-group{display:flex;flex-wrap:wrap;justify-content:center;gap:9px;margin-top:18px}
+.reading-paper .v4-reaction-button{appearance:none;border:1px solid #9f7c85;background:#eee0d7;color:#563c49;font:600 12px/1.4 'DM Sans',sans-serif;padding:10px 12px;min-height:43px;cursor:pointer;transition:background .2s ease}
+.reading-paper .v4-reaction-button:hover{background:#dfc7c5}
+.reading-paper .v4-reaction-button.v4-voted{background:#6e4c5d;color:#fff4ec;border-color:#6e4c5d}
+.reading-paper .v4-reaction-button:focus-visible{outline:2px solid #694452;outline-offset:3px}
+.reading-paper .v4-reaction-button:disabled{opacity:.5}
+.reading-paper .v4-reaction-feedback{font:14px/1.5 'Cormorant Garamond',Georgia,serif;color:#654655;margin:12px 0}
+.reading-paper .v4-related-stories{border-top:1px solid #bda59f;padding-top:20px;margin-top:18px}
+.reading-paper .v4-related-links{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:14px 0}
+.reading-paper .v4-related-link{display:inline-flex;padding:10px 15px;background:#59404f;color:#fbeade;text-decoration:none;font:600 12px/1.5 'DM Sans',sans-serif;max-width:100%}
+.reading-paper .v4-related-link:hover{background:#38232f;color:#fff}
+.v4-save-quote{background:#5d3c51}
+.v4-quotes-link{background:#322432}
+#reader-quote-feedback:empty{display:none}
+@media(max-width:600px){.reading-paper.real-page-turn .reader-ending-page{padding:18px 3px;min-height:395px}.reading-paper .v4-related-link{font-size:11px}.reading-paper .reader-ending-title{font-size:23px}}
+@media(prefers-reduced-motion:reduce){.reading-paper .v4-reaction-button{transition:none}}
