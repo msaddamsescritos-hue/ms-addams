@@ -155,7 +155,7 @@ async function fillEnding(){
  await readReactions();
  if(!db)return;
  const {data,error}=await db.from('chapters')
-  .select('slug,title,feeling_theme,published,scheduled_at')
+  .select('number,slug,title,feeling_theme,published,scheduled_at')
   .or('and(published.eq.true,scheduled_at.is.null),scheduled_at.lte.'+new Date().toISOString())
   .order('number',{ascending:true});
  if(error){links.append(el('p','v4-soft-note','Descubra outras histórias na biblioteca.'));return;}
