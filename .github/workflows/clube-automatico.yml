@@ -1,0 +1,31 @@
+name: Ms Addams - Avisos automáticos do Clube
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: msaddams-club-auto
+  cancel-in-progress: false
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verificar novos capítulos liberados
+        env:
+          FUNCTIONS_URL: ${{ secrets.MS_ADDAMS_SUPABASE_URL }}
+          AUTO_SECRET: ${{ secrets.MS_ADDAMS_CLUB_AUTO_SECRET }}
+        run: |
+          if [[ -z "$FUNCTIONS_URL" || -z "$AUTO_SECRET" ]]; then
+            echo "Avisos automáticos não ativados. Configure os segredos no repositório."
+            exit 0
+          fi
+          RESPONSE=$(curl --fail-with-body --silent --show-error --max-time 100 \
+            -X POST "${FUNCTIONS_URL%/}/functions/v1/club-auto" \
+            -H "x-automation-secret: ${AUTO_SECRET}" \
+            -H "Content-Type: application/json" \
+            --data '{}')
+          echo "$RESPONSE" | jq -e '.ok == true' >/dev/null
+          echo "Verificação concluída."
