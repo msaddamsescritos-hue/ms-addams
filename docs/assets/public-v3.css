@@ -5,3 +5,6 @@
 .v3-next-reveal p{font:italic clamp(19px,3vw,25px)/1.5 'Cormorant Garamond',Georgia,serif;margin:12px auto;color:#ebd3dc}
 .v3-next-reveal .v3-when{font:500 15px 'DM Sans',sans-serif;margin-top:25px;color:#f1dbcb}
 .v3-next-reveal .v3-countdown{font:13px 'DM Sans',sans-serif;color:#e6b9c8}
+
+@media(max-width:1000px){.topbar{height:auto;min-height:82px;flex-wrap:wrap;padding:18px 20px;gap:15px}.topbar nav{width:100%;justify-content:center;gap:14px 19px}.topbar nav a{font-size:10px}}
+@media(max-width:520px){.topbar nav{justify-content:flex-start}.topbar nav a{letter-spacing:.08em}}
