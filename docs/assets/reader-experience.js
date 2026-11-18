@@ -16,106 +16,207 @@
     const paper = root.querySelector('.reading-paper');
     if (!paper || paper.dataset.enhanced === 'true') return;
     paper.dataset.enhanced = 'true';
-    // Em manuscritos longos, a autora às vezes usa apenas uma quebra de linha.
-    // Dividir blocos extensos evita que o modo livro vire uma única página gigante.
+
+    // Folhear é o modo permanente. Ajusta o número de palavras à largura da tela.
+    const pageWordLimit = window.innerWidth < 540 ? 85 : window.innerWidth < 850 ? 135 : 190;
     const original = Array.from(paper.children).flatMap(node => {
       if (node.tagName !== 'P' || node.classList.contains('reader-note') ||
           node.classList.contains('chapter-signature')) return [node];
       const raw = (node.textContent || '').trim();
-      const blocks = raw.split(/\n+/).map(v=>v.trim()).filter(Boolean);
-      if (blocks.length === 1 && raw.split(/\s+/).length <= 290) return [node];
+      const blocks = raw.split(/\n+/).map(v => v.trim()).filter(Boolean);
+      if (blocks.length === 1 && raw.split(/\s+/).length <= pageWordLimit) return [node];
       const normalized = [];
-      blocks.forEach(block => {
+      for (const block of blocks) {
         const words = block.split(/\s+/);
-        for (let i = 0; i < words.length; i += 235) {
-          const fragment = make('p',node.className,words.slice(i,i+235).join(' '));
-          normalized.push(fragment);
+        for (let i = 0; i < words.length; i += pageWordLimit) {
+          normalized.push(make('p', node.className, words.slice(i,i + pageWordLimit).join(' ')));
         }
-      });
+      }
       node.remove();
       return normalized;
     });
-    const chunks = [];
+    const groups = [];
     let group = [], words = 0;
-    original.forEach(node => {
-      const count = (node.textContent || '').trim().split(/\s+/).filter(Boolean).length;
-      if (group.length && (words + count > 275 || node.classList.contains('chapter-signature'))) {
-        chunks.push(group); group = []; words = 0;
+    for (const node of original) {
+      if (node.classList.contains('chapter-signature')) {
+        if (group.length) group.push(node);
+        else if (groups.length) groups[groups.length - 1].push(node);
+        else group.push(node);
+        continue;
       }
-      group.push(node); words += count;
-    });
-    if (group.length) chunks.push(group);
-    if (!chunks.length) return;
-    // Evita uma página isolada contendo apenas a assinatura.
-    if (chunks.length > 1 && chunks[chunks.length - 1].length === 1 &&
-      chunks[chunks.length - 1][0].classList.contains('chapter-signature')) {
-      chunks[chunks.length - 2].push(chunks.pop()[0]);
+      const count = (node.textContent || '').trim().split(/\s+/).filter(Boolean).length;
+      if (group.length && words + count > pageWordLimit) {
+        groups.push(group); group = []; words = 0;
+      }
+      group.push(node);
+      words += count;
     }
-    chunks.forEach((nodes, i) => {
-      const section = make('section','reader-leaf');
-      section.dataset.pageNumber = String(i + 1);
-      section.setAttribute('aria-label','Página ' + (i + 1) + ' de ' + chunks.length);
-      nodes.forEach(n => section.append(n));
-      paper.append(section);
+    if (group.length) groups.push(group);
+    if (!groups.length) return;
+
+    const leaves = groups.map((nodes,i) => {
+      const leaf = make('section','reader-leaf');
+      leaf.dataset.pageNumber = String(i + 1);
+      leaf.setAttribute('aria-label','Página '+(i+1)+' de '+groups.length);
+      nodes.forEach(node => leaf.append(node));
+      paper.append(leaf);
+      return leaf;
     });
-    let pageIndex = 0;
-    let bookMode = false;
+
+    // Há apenas um modo: livro com virada de página.
+    paper.classList.add('book-mode','real-page-turn');
+    paper.setAttribute('aria-label','Livro de Ms. Addams. Use as setas ou deslize para virar as páginas.');
     const toolbar = make('div','manuscript-toolbar');
-    const modeButton = make('button','manuscript-button','✧ Folhear como livro');
-    modeButton.type = 'button';
-    modeButton.setAttribute('aria-pressed','false');
     const quoteButton = make('button','manuscript-button','✦ Criar cartão de frase');
     quoteButton.type = 'button';
-    const hint = make('span','manuscript-hint','Selecione um trecho do capítulo ou use a frase de abertura.');
-    toolbar.append(modeButton,quoteButton,hint);
+    const hint = make('span','manuscript-hint',
+      'Folheie com as setas ou deslize para os lados no celular.');
+    toolbar.append(quoteButton,hint);
     paper.parentElement.insertBefore(toolbar,paper);
+
     const nav = make('nav','manuscript-pager');
-    nav.setAttribute('aria-label','Folhear páginas do manuscrito');
-    const previous = make('button','manuscript-button','← Anterior');
+    nav.setAttribute('aria-label','Navegar pelas páginas do livro');
+    const previous = make('button','manuscript-button manuscript-prev','← Página anterior');
     const position = make('span','manuscript-count');
     position.setAttribute('aria-live','polite');
-    const next = make('button','manuscript-button','Próxima →');
-    [previous,next].forEach(b => b.type = 'button');
+    const next = make('button','manuscript-button manuscript-next','Próxima página →');
+    for (const button of [previous,next]) button.type = 'button';
     nav.append(previous,position,next);
     paper.insertAdjacentElement('afterend',nav);
-    function renderPages() {
-      paper.classList.toggle('book-mode',bookMode);
-      nav.hidden = !bookMode;
-      for (const leaf of paper.querySelectorAll('.reader-leaf')) {
-        leaf.classList.toggle('reader-leaf-active',Number(leaf.dataset.pageNumber) === pageIndex + 1);
+
+    // As pontas da folha são atalhos visuais, como em um livro.
+    const backEdge = make('button','reader-edge reader-edge-back','‹');
+    const nextEdge = make('button','reader-edge reader-edge-next','›');
+    backEdge.type = nextEdge.type = 'button';
+    backEdge.setAttribute('aria-label','Virar para a página anterior');
+    nextEdge.setAttribute('aria-label','Virar para a próxima página');
+    paper.append(backEdge,nextEdge);
+
+    const progress = document.getElementById('reader-progress');
+    if (progress) progress.hidden = true;
+
+    let current = 0;
+    let turning = false;
+    function render() {
+      leaves.forEach((leaf,i) => {
+        const active = i === current;
+        leaf.classList.toggle('reader-leaf-active',active);
+        leaf.setAttribute('aria-hidden',String(!active));
+      });
+      position.textContent = 'Página '+(current+1)+' de '+leaves.length;
+      previous.disabled = backEdge.disabled = turning || current === 0;
+      next.disabled = nextEdge.disabled = turning || current === leaves.length-1;
+    }
+    function turn(delta) {
+      const to = current + delta;
+      if (turning || to < 0 || to >= leaves.length) return;
+      const oldIndex = current;
+      if (reduced()) {
+        current = to; render();
+        paper.scrollIntoView({block:'start',behavior:'auto'});
+        return;
       }
-      position.textContent = 'Página ' + (pageIndex + 1) + ' de ' + chunks.length;
-      previous.disabled = pageIndex === 0;
-      next.disabled = pageIndex === chunks.length - 1;
-      modeButton.textContent = bookMode ? '↕ Leitura contínua' : '✧ Folhear como livro';
-      modeButton.setAttribute('aria-pressed',String(bookMode));
-      const track = document.getElementById('reader-progress');
-      if (track) track.hidden = bookMode;
+      turning = true;
+      const oldHeight = paper.offsetHeight;
+      const pageToTurn = delta > 0 ? leaves[oldIndex] : leaves[to];
+      if (delta > 0) current = to; // a próxima página surge sob a folha que se move
+      render();
+      const height = Math.max(oldHeight,paper.offsetHeight);
+      const oldMinHeight = paper.style.minHeight;
+      paper.style.minHeight = height + 'px';
+
+      const sheet = make('div','reader-turn-sheet');
+      sheet.setAttribute('aria-hidden','true');
+      const front = make('div','reader-turn-face reader-turn-front');
+      const back = make('div','reader-turn-face reader-turn-back');
+      const clone = pageToTurn.cloneNode(true);
+      clone.classList.add('reader-leaf-active');
+      clone.setAttribute('aria-hidden','true');
+      front.append(clone);
+      const ornament = make('div','reader-turn-ornament','✧');
+      const wordmark = make('p','reader-turn-wordmark','Ms. Addams');
+      const line = make('span','reader-turn-line','Um manuscrito entre as linhas');
+      back.append(ornament,wordmark,line);
+      const appearance = window.getComputedStyle(paper);
+      for (const face of [front,back]) {
+        face.style.backgroundColor = appearance.backgroundColor;
+        face.style.backgroundImage = appearance.backgroundImage;
+        face.style.backgroundSize = appearance.backgroundSize;
+        face.style.backgroundPosition = appearance.backgroundPosition;
+        face.style.backgroundRepeat = appearance.backgroundRepeat;
+        face.style.padding = appearance.padding;
+      }
+      sheet.append(front,back);
+      paper.append(sheet);
+      sheet.style.transform = delta > 0 ? 'rotateY(0deg)' : 'rotateY(-180deg)';
+      // Evita a animação automática de opacity: a página gira 180° no eixo vertical.
+      sheet.getBoundingClientRect();
+      let finished = false;
+      let fallback;
+      const complete = () => {
+        if (finished) return;
+        finished = true;
+        if (fallback) window.clearTimeout(fallback);
+        if (delta < 0) current = to;
+        sheet.remove();
+        paper.style.minHeight = oldMinHeight;
+        turning = false;
+        render();
+      };
+      sheet.addEventListener('transitionend',event => {
+        if (event.target === sheet && event.propertyName === 'transform') complete();
+      });
+      window.requestAnimationFrame(() => {
+        sheet.classList.add('reader-turn-sheet-active');
+        sheet.style.transform = delta > 0 ? 'rotateY(-180deg)' : 'rotateY(0deg)';
+      });
+      fallback = window.setTimeout(complete,1150);
+      paper.scrollIntoView({block:'start',behavior:'auto'});
     }
-    modeButton.addEventListener('click', () => {
-      bookMode = !bookMode; pageIndex = 0; renderPages();
-      if (bookMode) paper.scrollIntoView({behavior:reduced()?'auto':'smooth',block:'start'});
+    previous.addEventListener('click',()=>turn(-1));
+    next.addEventListener('click',()=>turn(1));
+    backEdge.addEventListener('click',()=>turn(-1));
+    nextEdge.addEventListener('click',()=>turn(1));
+
+    // Gestos horizontais — gestos verticais continuam rolando a página naturalmente.
+    let touchStart = null;
+    paper.addEventListener('touchstart',event => {
+      if (event.touches.length !== 1 || event.target.closest('button')) {
+        touchStart = null;return;
+      }
+      touchStart = {x:event.touches[0].clientX,y:event.touches[0].clientY};
+    },{passive:true});
+    paper.addEventListener('touchend',event => {
+      if (!touchStart || event.changedTouches.length !== 1) return;
+      const dx = event.changedTouches[0].clientX - touchStart.x;
+      const dy = event.changedTouches[0].clientY - touchStart.y;
+      touchStart = null;
+      if (Math.abs(dx) > 65 && Math.abs(dx) > Math.abs(dy)*1.5) turn(dx < 0 ? 1 : -1);
+    },{passive:true});
+    window.addEventListener('keydown',event => {
+      if (event.altKey || event.ctrlKey || event.metaKey || document.querySelector('dialog[open]')) return;
+      if (event.target.closest('input,textarea,select,[contenteditable],button,a')) return;
+      const rect = paper.getBoundingClientRect();
+      if (rect.bottom <= 0 || rect.top >= window.innerHeight) return;
+      if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+        event.preventDefault();turn(event.key === 'ArrowRight' ? 1 : -1);
+      }
     });
-    function go(delta) {
-      pageIndex = Math.max(0,Math.min(chunks.length - 1,pageIndex + delta));
-      renderPages();
-      paper.scrollIntoView({behavior:reduced()?'auto':'smooth',block:'start'});
-    }
-    previous.addEventListener('click',()=>go(-1));
-    next.addEventListener('click',()=>go(1));
-    renderPages();
-    quoteButton.addEventListener('click', async () => {
+
+    render();
+    quoteButton.addEventListener('click',async()=>{
       const selection = window.getSelection();
       const selected = selection && selection.rangeCount &&
         paper.contains(selection.anchorNode) && paper.contains(selection.focusNode)
           ? selection.toString().replace(/\s+/g,' ').trim() : '';
       const epigraph = (root.querySelector('.reading-header .epigraph')?.textContent || '').trim().replace(/^“|”$/g,'');
-      const first = paper.querySelector('.reader-leaf p:not(.reader-note):not(.chapter-signature)');
+      const visibleLeaf = leaves[current];
+      const first = visibleLeaf.querySelector('p:not(.reader-note):not(.chapter-signature)');
       const quotation = (selected.length >= 15 ? selected : (epigraph || first?.textContent || '')).trim().slice(0,380);
       if (!quotation) return;
       const title = (root.querySelector('.reading-header h1')?.textContent || 'Um manuscrito').trim();
-      try { await showCard(quotation,title); }
-      catch (err) { window.alert('Não foi possível gerar a imagem neste navegador. Tente novamente.'); }
+      try {await showCard(quotation,title);}
+      catch(err) {window.alert('Não foi possível gerar a imagem neste navegador. Tente novamente.');}
     });
   }
   function wrap(ctx,text,maxWidth) {
