@@ -6,7 +6,7 @@
     var link = document.createElement('link');
     link.id = 'ms-addams-paper-styles';
     link.rel = 'stylesheet';
-    link.href = 'assets/papel-addams.css';
+    link.href = 'papel-addams.css';
     document.head.appendChild(link);
   }
   var root = document.getElementById('chapter-content');
