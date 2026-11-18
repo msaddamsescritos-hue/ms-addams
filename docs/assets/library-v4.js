@@ -16,10 +16,14 @@ const selected=new Map();
 let active='todos';
 async function init(){
  const {data,error}=await client.from('chapters')
-  .select('slug,feeling_theme,published,scheduled_at')
+  .select('slug,title,feeling_theme,published,scheduled_at')
   .or('and(published.eq.true,scheduled_at.is.null),scheduled_at.lte.'+new Date().toISOString());
  if(error||!data?.length)return; // Migração ainda não instalada ou biblioteca vazia.
- for(const chapter of data)selected.set(chapter.slug,chapter.feeling_theme||'outros');
+ for(const chapter of data) {
+   const category=window.ADDAMS_FEELINGS?.effective(chapter) ||
+      chapter.feeling_theme || 'outros';
+   selected.set(chapter.slug,category);
+ }
  const bar=el('div','v4-feelings');
  const header=el('div','v4-feelings-heading');
  header.append(el('strong','','✧ Descubra por sentimento'));
