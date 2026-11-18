@@ -76,6 +76,18 @@
     cover.dataset.pageNumber = '1';
     paper.insertBefore(cover,leaves[0]);
     leaves.unshift(cover);
+    // Uma folha final revela a mensagem de encerramento e as reações discretas.
+    const ending = make('section','reader-leaf reader-ending-page');
+    ending.dataset.ending = 'true';
+    ending.append(make('div','reader-ending-flower','✧'));
+    ending.append(make('h2','reader-ending-title','O que permanece nas entrelinhas?'));
+    ending.append(make('p','reader-ending-text','Algumas histórias terminam aqui. Outras continuam dentro de quem as leu.'));
+    ending.append(make('p','reader-ending-signature','— Ms. Addams'));
+    const engagementArea = make('div','reader-ending-engagement');
+    engagementArea.id = 'reader-ending-engagement';
+    ending.append(engagementArea);
+    paper.append(ending);
+    leaves.push(ending);
     leaves.forEach((leaf,i)=>{
       leaf.dataset.pageNumber=String(i+1);
       leaf.setAttribute('aria-label',i===0?'Capa do manuscrito':'Página '+(i+1)+' de '+leaves.length);
@@ -135,6 +147,13 @@
       bookmark.textContent = current === 0 ? '♧ Guardar capa' : '♧ Marcar página '+(current+1);
       previous.disabled = backEdge.disabled = turning || current === 0;
       next.disabled = nextEdge.disabled = turning || current === leaves.length-1;
+      const finished = current === leaves.length-1;
+      const progress = finished ? 100 : current===0 ? 0 :
+        Math.min(99,Math.round(100*current/Math.max(1,leaves.length-2)));
+      const detail = {slug,index:current,total:leaves.length,percent:progress,
+        completed:finished,chapterNumber:Math.max(0,current)};
+      window.ADDAMS_READER_STATE = detail;
+      document.dispatchEvent(new CustomEvent('msaddams:reader-page',{detail}));
     }
     function turn(delta) {
       const to = current + delta;
