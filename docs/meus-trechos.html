@@ -1,0 +1,73 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#201824"><meta name="description" content="Meu pequeno arquivo particular de frases dos manuscritos de Ms. Addams. Guardado apenas neste navegador.">
+<title>Meus Trechos · Ms. Addams</title><link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--plum:#302334;--cream:#f7e8dc}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% -30%,#4a3048 0,#211a26 65%);color:var(--cream);font:20px/1.5 'Cormorant Garamond',Georgia,serif}
+a{color:inherit}button{cursor:pointer}
+nav{padding:23px clamp(20px,6vw,88px);border-bottom:1px solid #6c4b5c;display:flex;justify-content:space-between;flex-wrap:wrap;gap:15px;align-items:center}
+nav .brand{font:500 18px 'Cinzel',serif;letter-spacing:.12em;text-decoration:none}
+nav .back{font:12px 'DM Sans',sans-serif;color:#d9b9cb;text-decoration:none}
+main{width:min(920px,calc(100% - 36px));margin:62px auto 100px}
+.kicker{font:11px 'DM Sans',sans-serif;letter-spacing:.2em;color:#caa3b6}
+h1{font:400 clamp(32px,6vw,58px)/1.2 'Cinzel',Georgia,serif;margin:17px 0 12px}
+.lead{font:italic clamp(20px,3vw,27px)/1.5 'Cormorant Garamond',Georgia,serif;color:#e6ced6;max-width:740px;margin-bottom:28px}
+.privacy{border-left:3px solid #c99bac;padding:8px 15px;font:12px/1.6 'DM Sans',sans-serif;color:#e1bfc9;max-width:780px}
+.actions{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:35px 0 25px}
+.count{font:13px 'DM Sans',sans-serif;color:#e3c9d1}
+.btn{border:1px solid #b18796;background:#432c3c;color:#f9e9df;min-height:38px;padding:10px 16px;font:12px 'DM Sans',sans-serif}
+.btn:hover{background:#624356}.btn.danger{border-color:#785e69;background:#2a202d}
+.quote-card{background:#f2e6d7 url('papel-discreto.webp') center/cover;padding:clamp(22px,5vw,39px);border:1px solid #baa09b;color:#3c2831;box-shadow:0 12px 35px #0005;margin:20px 0}
+.quote-card blockquote{font:italic clamp(21px,3.5vw,30px)/1.5 'Cormorant Garamond',Georgia,serif;margin:0 0 20px;white-space:pre-wrap}
+.quote-card .source{font:500 12px/1.5 'DM Sans',sans-serif;color:#6e4d5b;letter-spacing:.04em}
+.quote-card .quote-actions{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:22px}
+.quote-card .btn{background:#5a3c4e;color:#f7e7dc}
+.empty{padding:45px 20px;border:1px solid #76546a;text-align:center;color:#e2c6d1}
+footer{text-align:center;color:#af8f9e;font:13px 'DM Sans',sans-serif;padding:25px}
+</style></head><body>
+<nav><a class="brand" href="index.html">✦ MS. ADDAMS</a><a class="back" href="index.html#biblioteca">← Voltar aos manuscritos</a></nav>
+<main><span class="kicker">✧ UM ARQUIVO SÓ SEU</span><h1>Meus <em>Trechos</em></h1>
+<p class="lead">As palavras que você decidiu não deixar para trás.</p>
+<p class="privacy">As frases guardadas ficam somente neste navegador. Não são enviadas à autora, não exigem conta e não aparecem em outros dispositivos. Se você limpar os dados do navegador, poderá perdê-las.</p>
+<div class="actions"><span class="count" id="quote-count" aria-live="polite">Consultando...</span><button type="button" class="btn danger" id="clear-quotes">Limpar meu arquivo</button></div>
+<section id="quote-list" aria-live="polite"></section></main>
+<footer>✧ Ms. Addams · O que permanece nas entrelinhas</footer>
+<script>
+(()=>{
+'use strict';
+const key='msaddams_quotes_v4',$=id=>document.getElementById(id);
+const make=(tag,cls,value)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(value!==undefined)n.textContent=String(value);return n;};
+function read(){try{const v=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(v)?v.filter(x=>x&&typeof x.text==='string'&&typeof x.slug==='string'):[]}catch{return[]}}
+function write(items){try{localStorage.setItem(key,JSON.stringify(items));return true}catch{return false}}
+async function copyText(value,button){
+ try{await navigator.clipboard.writeText(value);button.textContent='Copiado ✓'}
+ catch{window.prompt('Copie o trecho:',value)}
+}
+function render(){
+ const items=read(),list=$('quote-list');list.replaceChildren();
+ $('quote-count').textContent=items.length+' trecho(s) guardado(s)';
+ $('clear-quotes').disabled=!items.length;
+ if(!items.length){list.append(make('div','empty','Seu arquivo ainda está vazio. Abra um manuscrito, selecione um trecho e clique em “Guardar trecho”.'));return;}
+ items.forEach((item,i)=>{
+  const box=make('article','quote-card');
+  box.append(make('blockquote','', '“'+item.text.replace(/^“|”$/g,'')+'”'));
+  box.append(make('p','source','— Ms. Addams · '+String(item.title||'Um manuscrito')));
+  const buttons=make('div','quote-actions');
+  const open=make('a','btn','Abrir manuscrito ↗');
+  open.href='capitulo.html?slug='+encodeURIComponent(item.slug);
+  const copy=make('button','btn','Copiar frase');copy.type='button';
+  copy.addEventListener('click',()=>copyText(item.text,copy));
+  const del=make('button','btn danger','Remover');del.type='button';
+  del.addEventListener('click',()=>{const items=read();items.splice(i,1);write(items);render();});
+  buttons.append(open,copy,del);box.append(buttons);list.append(box);
+ });
+}
+$('clear-quotes').addEventListener('click',()=>{
+ if(!confirm('Remover todos os trechos guardados neste navegador? Essa ação não pode ser desfeita.'))return;
+ if(write([]))render();
+});
+render();
+})();
+</script></body></html>
