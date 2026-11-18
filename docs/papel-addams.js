@@ -13,7 +13,7 @@
   if (!root) return;
   function applyPaper() {
     var paper = root.querySelector('.reading-paper');
-    if (!paper) return;
+    if (!paper || paper.dataset.paperOverride === '1') return;
     var header = root.querySelector('.reading-header .kicker');
     var match = header && header.textContent.match(/\d+/);
     var number = match ? Number(match[0]) : 1;
