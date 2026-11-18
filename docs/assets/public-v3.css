@@ -1,0 +1,7 @@
+/* Página inicial: anúncio discreto do próximo manuscrito, sem revelar o título. */
+.v3-next-reveal{width:min(960px,calc(100% - 34px));margin:45px auto 70px;padding:clamp(26px,5vw,55px);text-align:center;border:1px solid #9d7380;background:linear-gradient(155deg,#342333,#231924);box-shadow:0 15px 45px #100a14a6;color:#f0ddd8}
+.v3-next-reveal .v3-kicker{font:11px 'DM Sans',sans-serif;letter-spacing:.2em;color:#d9adbd}
+.v3-next-reveal h2{font:400 clamp(24px,4vw,40px)/1.35 'Cinzel',Georgia,serif;margin:19px 0;color:#f6e3d6}
+.v3-next-reveal p{font:italic clamp(19px,3vw,25px)/1.5 'Cormorant Garamond',Georgia,serif;margin:12px auto;color:#ebd3dc}
+.v3-next-reveal .v3-when{font:500 15px 'DM Sans',sans-serif;margin-top:25px;color:#f1dbcb}
+.v3-next-reveal .v3-countdown{font:13px 'DM Sans',sans-serif;color:#e6b9c8}
