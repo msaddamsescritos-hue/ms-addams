@@ -58,6 +58,18 @@ async function loadRadar(){
   chart.append(milestone('Encerramento',finished,total));
   card.append(chart);
   card.append(make('p','v4-radar-footnote',fmt(Number(row.below_half)||0)+' sessão(ões) têm último progresso registrado abaixo da metade; algumas podem estar em andamento.'));
+  const last=make('div','v4-last-positions');
+  last.append(make('h4','','Última posição registrada'));
+  const stages=[['Antes de 25%',row.last_0_24],['Entre 25% e 49%',row.last_25_49],
+   ['Entre 50% e 74%',row.last_50_74],['Entre 75% e 99%',row.last_75_99]];
+  const stageList=make('div','v4-last-grid');
+  stages.forEach(([label,value])=>{
+    const item=make('span','v4-last-pill');
+    item.append(make('span','',label),make('strong','',fmt(value)));
+    stageList.append(item);
+  });
+  last.append(stageList,make('p','v4-radar-footnote','Essa é a última posição observada, não uma confirmação de abandono da leitura.'));
+  card.append(last);
   const reactionRow=make('div','v4-radar-reactions');
   [['Me identifiquei',row.identification_count],['Me fez refletir',row.reflection_count],['Precisava ler',row.comfort_count]]
    .forEach(([label,count])=>{
