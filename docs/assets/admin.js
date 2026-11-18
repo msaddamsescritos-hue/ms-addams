@@ -170,7 +170,7 @@
     if ($('chapter-cover-theme')) $('chapter-cover-theme').value = c?.cover_theme || 'ameixa';
     if ($('chapter-paper-theme')) $('chapter-paper-theme').value = c?.paper_theme || 'automatico';
     if ($('chapter-auto-notify')) $('chapter-auto-notify').checked = Boolean(c?.auto_notify);
-    if ($('chapter-feeling-theme')) $('chapter-feeling-theme').value = c?.feeling_theme || 'outros';
+    if ($('chapter-feeling-theme')) $('chapter-feeling-theme').value = window.ADDAMS_FEELINGS?.effective(c) || c?.feeling_theme || 'outros';
     if ($('chapter-closing-note')) $('chapter-closing-note').value = c?.closing_note || '';
     if ($('chapter-schedule-at')) $('chapter-schedule-at').value = scheduledLater(c || {}) ? toLocalDateTime(c.scheduled_at) : '';
     $('chapter-slug').value = c?.slug || '';
@@ -577,6 +577,38 @@
     $('login-form').elements.namedItem('password').value = ''; await guard();
   });
   $('logout').addEventListener('click',async()=>{await client.auth.signOut();showLogin();});
+  $('classify-existing-chapters')?.addEventListener('click',async()=>{
+    const feedback=$('classify-existing-feedback');
+    const button=$('classify-existing-chapters');
+    const classifier=window.ADDAMS_FEELINGS;
+    if(!classifier){if(feedback)feedback.textContent='O classificador ainda não foi carregado. Atualize a página.';return;}
+    const suggestions=chapters.filter(c=>c.feeling_theme==='outros'&&classifier.recommendation(c));
+    if(!suggestions.length){
+      if(feedback)feedback.textContent='Os capítulos conhecidos já estão classificados. Você pode ajustar qualquer tema no editor.';
+      return;
+    }
+    const description=suggestions.map(c=>
+      'Capítulo '+c.number+' — '+c.title+' → '+({
+        amor:'Amor',amizade:'Amizade',desilusoes:'Decepções',
+        recomecos:'Recomeços',autoconhecimento:'Autoconhecimento'
+      }[classifier.recommendation(c)]||'Outras reflexões')).join('\n');
+    if(!window.confirm('Salvar no Supabase a classificação editorial sugerida?\n\n'+description+
+      '\n\nNão alteraremos capítulos já categorizados nem seus textos.'))return;
+    button.disabled=true;
+    if(feedback)feedback.textContent='Classificando os capítulos existentes…';
+    let updated=0,failed=0;
+    for(const chapter of suggestions){
+      const feeling_theme=classifier.recommendation(chapter);
+      const {error}=await client.from('chapters')
+        .update({feeling_theme}).eq('id',chapter.id).eq('feeling_theme','outros');
+      if(error)failed++;else updated++;
+    }
+    await loadChapters();
+    if(feedback)feedback.textContent=failed
+      ? updated+' capítulo(s) classificados; '+failed+' falha(s). Verifique as permissões no Supabase.'
+      : updated+' capítulo(s) classificados no Supabase. O filtro da biblioteca já pode ser utilizado.';
+    button.disabled=false;
+  });
   $('new-chapter').addEventListener('click',()=>resetEditor(null));
   $('schedule-chapter').addEventListener('click',scheduleChapter);
   $('close-editor').addEventListener('click',()=>$('editor-block').classList.add('hidden'));
