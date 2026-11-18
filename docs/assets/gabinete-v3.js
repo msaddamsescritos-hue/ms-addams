@@ -48,9 +48,15 @@ async function versions(){
  if(!db)return;const list=$('history-list');list.replaceChildren();
  const id=$('chapter-id').value;
  if(!id){list.append(node('p','v3-quiet','Salve o capítulo para consultar o histórico.'));return;}
- const {data,error}=await db.from('chapter_versions')
-  .select('id,title,epigraph,body,cover_theme,paper_theme,saved_at').eq('chapter_id',id)
+ let response=await db.from('chapter_versions')
+  .select('id,title,epigraph,body,cover_theme,paper_theme,feeling_theme,closing_note,saved_at').eq('chapter_id',id)
   .order('saved_at',{ascending:false}).limit(20);
+ if(response.error && /feeling_theme|closing_note/i.test(response.error.message||'')){
+   response=await db.from('chapter_versions')
+    .select('id,title,epigraph,body,cover_theme,paper_theme,saved_at').eq('chapter_id',id)
+    .order('saved_at',{ascending:false}).limit(20);
+ }
+ const {data,error}=response;
  if(error){list.append(node('p','v3-quiet','Ative o histórico executando db/biblioteca-v3.sql.'));return;}
  if(!data?.length){list.append(node('p','v3-quiet','Ainda não há versões anteriores.'));return;}
  data.forEach((v,i)=>{
@@ -62,6 +68,8 @@ async function versions(){
    const update={title:v.title,epigraph:v.epigraph,body:v.body};
    if(v.cover_theme)update.cover_theme=v.cover_theme;
    if(v.paper_theme)update.paper_theme=v.paper_theme;
+   if(v.feeling_theme)update.feeling_theme=v.feeling_theme;
+   if(typeof v.closing_note==='string')update.closing_note=v.closing_note;
    const {error:e}=await db.from('chapters').update(update).eq('id',id);
    if(e)alert('Não foi possível restaurar: '+e.message);else location.reload();
   };
