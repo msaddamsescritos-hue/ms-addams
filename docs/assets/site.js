@@ -5,6 +5,24 @@
   const configured = Boolean(cfg.supabaseUrl && cfg.supabasePublishableKey);
   const supa = configured && window.supabase ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabasePublishableKey) : null;
   const $ = selector => document.querySelector(selector);
+  // Consultas públicas: nunca mostrar um agendamento futuro, mesmo para a autora
+  // autenticada no mesmo navegador. Compatível com o banco antes da migração.
+  async function visibleChapterQuery(fields, options = {}) {
+    const build = (legacy) => {
+      let query = supa.from('chapters').select(fields);
+      if (options.slug) query = query.eq('slug', options.slug);
+      if (legacy) query = query.eq('published', true);
+      else query = query.or('and(published.eq.true,scheduled_at.is.null),scheduled_at.lte.' + new Date().toISOString());
+      if (options.order) query = query.order('number', { ascending: true });
+      if (options.single) query = query.maybeSingle();
+      return query;
+    };
+    let response = await build(false);
+    if (response.error && /scheduled_at/i.test(response.error.message || '')) {
+      response = await build(true); // publicações antigas seguem funcionando
+    }
+    return response;
+  }
   const openingChapter = {
     number: 1,
     slug: 'capitulo-1-desventura-em-serie',
@@ -89,7 +107,7 @@
     if (!supa && !configured) chapters = [openingChapter];
     else if (!supa) { root.replaceChildren(elem('div', 'notice', 'A biblioteca está temporariamente indisponível.')); return; }
     else {
-      const { data, error } = await supa.from('chapters').select('number,slug,title,epigraph,body,published_at').eq('published', true).order('number', { ascending: true });
+      const { data, error } = await visibleChapterQuery('number,slug,title,epigraph,body,published_at', {order:true});
       if (error) { root.replaceChildren(elem('div', 'notice', 'Não foi possível abrir a biblioteca. Tente novamente mais tarde.')); return; }
       chapters = data || [];
     }
@@ -128,7 +146,7 @@
     if (!supa && !configured) chapter = slug === openingChapter.slug ? openingChapter : null;
     else if (!supa) { root.replaceChildren(elem('p', 'notice', 'Não foi possível abrir o manuscrito.')); return; }
     else {
-      const { data, error } = await supa.from('chapters').select('number,title,epigraph,body,published_at').eq('slug', slug).eq('published', true).maybeSingle();
+      const { data, error } = await visibleChapterQuery('number,title,epigraph,body,published_at', {slug, single:true});
       if (!error) chapter = data;
     }
     if (!chapter) { root.replaceChildren(elem('p', 'notice', 'Este manuscrito não está disponível para leitura.')); return; }
@@ -237,8 +255,7 @@
     let library = [];
     if (!supa && !configured) library = [openingChapter];
     else if (supa) {
-      const {data, error} = await supa.from('chapters')
-        .select('number,slug,title').eq('published', true).order('number', {ascending:true});
+      const {data, error} = await visibleChapterQuery('number,slug,title', {order:true});
       if (!error) library = data || [];
     }
     const at = library.findIndex(c => c.number === chapter.number);
