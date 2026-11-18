@@ -77,13 +77,13 @@ async function insights(){
  const max=Math.max(1,...(data||[]).map(c=>Number(c.total_reads)||0));
  (data||[]).forEach(c=>{
   const row=node('div','v3-list-item'),body=node('div','v3-metric');
-  body.append(node('h3','',c.chapter_title),node('strong','',Number(c.total_reads||0).toLocaleString('pt-BR')+' leituras'));
+  body.append(node('h3','',c.chapter_title),node('strong','',Number(c.total_reads||0).toLocaleString('pt-BR')+' aberturas'));
   body.append(node('p','','Nos últimos 7 dias: '+Number(c.recent_reads||0).toLocaleString('pt-BR')));
   const bar=node('div','v3-bar'),fill=node('span');fill.style.width=100*Number(c.total_reads||0)/max+'%';
   bar.append(fill);body.append(bar);row.append(body);el.append(row);
  });
  if(!data?.length)el.append(node('p','v3-quiet','Ainda não há dados de capítulos.'));
- msg('insights-feedback','Leituras aproximadas por sessão, sem identificar pessoas.');
+ msg('insights-feedback','Aberturas aproximadas por sessão; não são leitores únicos nem leituras concluídas.');
 }
 $('refresh-chapter-insights')?.addEventListener('click',insights);
 async function studioLoad(){
