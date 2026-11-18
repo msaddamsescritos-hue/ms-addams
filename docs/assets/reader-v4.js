@@ -130,7 +130,7 @@ async function fillEnding(){
  let theme='outros',note='';
  if(db){
    const {data,error}=await db.from('chapters').select('feeling_theme,closing_note').eq('slug',slug).maybeSingle();
-   if(!error&&data){theme=data.feeling_theme||theme;note=data.closing_note||'';}
+   if(!error&&data){theme=window.ADDAMS_FEELINGS?.effective({...data,title}) || data.feeling_theme || theme;note=data.closing_note||'';}
  }
  const paragraph=ending.querySelector('.reader-ending-text');
  if(paragraph)paragraph.textContent=note.trim()||
@@ -160,8 +160,9 @@ async function fillEnding(){
   .order('number',{ascending:true});
  if(error){links.append(el('p','v4-soft-note','Descubra outras histórias na biblioteca.'));return;}
  const others=(data||[]).filter(c=>c.slug!==slug);
- const same=others.filter(c=>c.feeling_theme===theme);
- const suggested=[...same,...others.filter(c=>c.feeling_theme!==theme)].slice(0,2);
+ const categoryFor=c=>window.ADDAMS_FEELINGS?.effective(c)||c.feeling_theme||'outros';
+ const same=others.filter(c=>categoryFor(c)===theme);
+ const suggested=[...same,...others.filter(c=>categoryFor(c)!==theme)].slice(0,2);
  if(!suggested.length){links.append(el('p','v4-soft-note','Outras histórias ainda estão sendo escritas.'));return;}
  for(const ch of suggested){
    const link=el('a','v4-related-link',ch.title+' ↗');
