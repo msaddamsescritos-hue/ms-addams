@@ -634,6 +634,14 @@
     } catch(err) { status('reply-feedback',err.message || 'Erro ao excluir.',true); }
     finally { $('delete-letter').disabled = false; }
   });
+  document.addEventListener('msaddams:letter-topic-saved',event=>{
+    const {id,topic}=event.detail||{};
+    if (!id)return;
+    const letter=letters.find(x=>x.id===id);
+    if (letter)letter.topic=topic||'';
+    if (currentLetter?.id===id)currentLetter.topic=topic||'';
+    renderLetters();
+  });
   $('club-notify-preview').addEventListener('click',()=>clubNotification('preview'));
   $('club-notify-send').addEventListener('click',()=>clubNotification('send'));
   $('refresh-club').addEventListener('click',loadClub);
