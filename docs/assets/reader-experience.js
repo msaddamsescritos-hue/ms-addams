@@ -63,6 +63,23 @@
       return leaf;
     });
 
+
+    // Capa ilustrada como primeira página do livro, sem deslocar os textos originais.
+    const cover = make('section','reader-leaf cover-page');
+    const coverNumber = root.querySelector('.reading-header .kicker')?.textContent || 'UM MANUSCRITO';
+    const coverTitle = root.querySelector('.reading-header h1')?.textContent || 'Ms. Addams';
+    cover.append(make('span','cover-number',coverNumber));
+    cover.append(make('span','cover-ornament','✧'));
+    cover.append(make('h2','cover-title',coverTitle));
+    cover.append(make('p','cover-subtitle','O arquivo das desventuras'));
+    cover.append(make('span','cover-signature','— Ms. Addams'));
+    cover.dataset.pageNumber = '1';
+    paper.insertBefore(cover,leaves[0]);
+    leaves.unshift(cover);
+    leaves.forEach((leaf,i)=>{
+      leaf.dataset.pageNumber=String(i+1);
+      leaf.setAttribute('aria-label',i===0?'Capa do manuscrito':'Página '+(i+1)+' de '+leaves.length);
+    });
     // Há apenas um modo: livro com virada de página.
     paper.classList.add('book-mode','real-page-turn');
     paper.setAttribute('aria-label','Livro de Ms. Addams. Use as setas ou deslize para virar as páginas.');
@@ -71,7 +88,9 @@
     quoteButton.type = 'button';
     const hint = make('span','manuscript-hint',
       'Folheie com as setas ou deslize para os lados no celular.');
-    toolbar.append(quoteButton,hint);
+    const bookmark = make('button','manuscript-button bookmark-ribbon','♧ Marcar página');
+    bookmark.type = 'button';
+    toolbar.append(quoteButton,bookmark,hint);
     paper.parentElement.insertBefore(toolbar,paper);
 
     const nav = make('nav','manuscript-pager');
@@ -95,7 +114,16 @@
     const progress = document.getElementById('reader-progress');
     if (progress) progress.hidden = true;
 
+    const slug = new URLSearchParams(window.location.search).get('slug') || 'manuscrito';
+    const pageKey = 'msaddams_bookmark_v3:' + slug;
     let current = 0;
+    try {
+      const saved = Number(window.localStorage.getItem(pageKey));
+      if (Number.isInteger(saved) && saved > 0 && saved < leaves.length) current = saved;
+    } catch (_) {}
+    const savePage = () => {
+      try { window.localStorage.setItem(pageKey, String(current)); } catch (_) {}
+    };
     let turning = false;
     function render() {
       leaves.forEach((leaf,i) => {
@@ -103,7 +131,8 @@
         leaf.classList.toggle('reader-leaf-active',active);
         leaf.setAttribute('aria-hidden',String(!active));
       });
-      position.textContent = 'Página '+(current+1)+' de '+leaves.length;
+      position.textContent = current === 0 ? 'Capa · ' + leaves.length + ' páginas' : 'Página '+(current+1)+' de '+leaves.length;
+      bookmark.textContent = current === 0 ? '♧ Guardar capa' : '♧ Marcar página '+(current+1);
       previous.disabled = backEdge.disabled = turning || current === 0;
       next.disabled = nextEdge.disabled = turning || current === leaves.length-1;
     }
@@ -112,7 +141,7 @@
       if (turning || to < 0 || to >= leaves.length) return;
       const oldIndex = current;
       if (reduced()) {
-        current = to; render();
+        current = to; render(); savePage();
         paper.scrollIntoView({block:'start',behavior:'auto'});
         return;
       }
@@ -161,7 +190,7 @@
         sheet.remove();
         paper.style.minHeight = oldMinHeight;
         turning = false;
-        render();
+        render();savePage();
       };
       sheet.addEventListener('transitionend',event => {
         if (event.target === sheet && event.propertyName === 'transform') complete();
@@ -173,6 +202,11 @@
       fallback = window.setTimeout(complete,1150);
       paper.scrollIntoView({block:'start',behavior:'auto'});
     }
+    bookmark.addEventListener('click',()=>{
+      savePage();
+      bookmark.textContent='✓ Página '+(current+1)+' guardada';
+      window.setTimeout(()=>{bookmark.textContent='♧ Marcar página '+(current+1)},1750);
+    });
     previous.addEventListener('click',()=>turn(-1));
     next.addEventListener('click',()=>turn(1));
     backEdge.addEventListener('click',()=>turn(-1));
