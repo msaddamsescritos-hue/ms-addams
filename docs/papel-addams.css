@@ -1,29 +1,29 @@
-/* MS. ADDAMS — PAPEIS ILUSTRADOS, v1.0
+/* MS. ADDAMS — PAPEIS ILUSTRADOS, v1.1 — contraste aprimorado
    Sobrescreve apenas o fundo da folha de leitura; não afeta login, biblioteca, dados ou cartas. */
 .reading-paper {
   background-color: #efe4d5;
-  background-image: linear-gradient(rgba(250,245,238,.35),rgba(250,245,238,.35)), url('papel-discreto.webp');
+  background-image: linear-gradient(rgba(250,245,238,.55),rgba(250,245,238,.55)), url('papel-discreto.webp');
   background-position: center, center;
   background-size: 100% 100%, 100% 100%;
   background-repeat: no-repeat;
   border: 1px solid #af9285;
   padding: clamp(57px, 8vw, 98px) clamp(44px, 8vw, 95px);
   box-shadow: 0 20px 58px #0f0a1270;
-  color: #332b2b;
+  color: #251b20;
 }
 .reading-paper[data-paper-theme="romantico"] {
-  background-image: linear-gradient(rgba(250,245,238,.38),rgba(250,245,238,.38)), url('papel-romantico.webp');
+  background-image: linear-gradient(rgba(250,245,238,.58),rgba(250,245,238,.58)), url('papel-romantico.webp');
 }
 .reading-paper[data-paper-theme="sofisticado"] {
-  background-image: linear-gradient(rgba(250,245,238,.35),rgba(250,245,238,.35)), url('papel-sofisticado.webp');
+  background-image: linear-gradient(rgba(250,245,238,.55),rgba(250,245,238,.55)), url('papel-sofisticado.webp');
 }
 .reading-paper[data-paper-theme="discreto"] {
-  background-image: linear-gradient(rgba(250,245,238,.35),rgba(250,245,238,.35)), url('papel-discreto.webp');
+  background-image: linear-gradient(rgba(250,245,238,.55),rgba(250,245,238,.55)), url('papel-discreto.webp');
 }
 /* Mantém ornamentos afastados das palavras e legibilidade no celular. */
-.reading-paper p { color: #382f34; position: relative; z-index: 1; text-shadow: 0 1px #fff8; }
-.reading-paper .reader-note { color: #6c565a; }
-.reading-paper .chapter-signature { color:#73535f; border-top-color: #b5a39b; }
+.reading-paper p { color: #251a20; font-weight: 500; position: relative; z-index: 1; text-shadow: 0 1px 0 rgba(255,250,243,.35); }
+.reading-paper .reader-note, .reading-paper .reader-note p { color: #43313a; font-weight: 500; }
+.reading-paper .chapter-signature { color: #392630; font-weight: 600; border-top-color: #a68a7e; background-color: rgba(250,245,238,.42); padding: 12px 10px 8px; }
 @media(max-width: 600px){
   .reading-paper { padding: 69px 40px 85px; }
   .reading-paper p { font-size: clamp(19px, 5vw, 22px); line-height: 1.55; }
