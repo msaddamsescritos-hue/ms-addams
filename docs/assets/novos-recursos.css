@@ -1,0 +1,8 @@
+/* Ms. Addams — agendamento discreto no Gabinete */
+.schedule-panel{margin:20px 0 22px;padding:20px 24px;border:1px solid #8c6b7b;background:linear-gradient(145deg,#2d2330,#201a26);max-width:680px}
+.schedule-panel .schedule-title{font:500 13px 'DM Sans',sans-serif;letter-spacing:.06em;color:#edd1ce;margin:0 0 12px}
+.schedule-panel .admin-field{margin:0}
+.schedule-panel input{width:100%;max-width:310px;color-scheme:dark;border:1px solid #987988}
+.schedule-panel .schedule-helper{font:13px/1.6 'DM Sans',sans-serif;color:#cebac6;margin:10px 0 0}
+.schedule-panel button{margin-top:14px}
+@media(max-width:600px){.schedule-panel{padding:16px}.schedule-panel button{width:100%}}
