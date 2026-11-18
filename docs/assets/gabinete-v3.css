@@ -22,3 +22,14 @@ fieldset.v3-panel legend{font:600 11px/1.5 'DM Sans',sans-serif;letter-spacing:.
 .v3-metric .v3-bar span{display:block;height:100%;background:#b98491}
 .v3-small-link{color:#e4bdc9;font:13px 'DM Sans',sans-serif}
 @media(max-width:650px){.v3-panel{padding:16px}.v3-list-item{padding:14px}.v3-panel .editor-actions{flex-wrap:wrap}.v3-panel-heading{align-items:flex-start}}
+
+/* Indicadores acumulados: visão geral e comparação entre capítulos. */
+.v3-insights-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin:20px 0 27px}
+.v3-summary-metric{border:1px solid #927282;background:linear-gradient(145deg,#362836,#261d2b);padding:23px 21px}
+.v3-summary-metric span{display:block;color:#d6b8c3;font:12px/1.4 'DM Sans',sans-serif;letter-spacing:.05em}
+.v3-summary-metric strong{display:block;color:#f5e7dc;font:400 clamp(26px,4vw,40px)/1.35 Georgia,serif;margin-top:12px}
+.v3-insight-item{align-items:center}
+.v3-insight-detail{flex:2 1 230px;min-width:0}
+.v3-insight-subtitle{margin-top:6px!important}
+.v3-insight-item .v3-metric{flex:1 1 210px;min-width:190px}
+@media(max-width:620px){.v3-summary-metric{padding:17px}.v3-insight-item .v3-metric{width:100%}}
