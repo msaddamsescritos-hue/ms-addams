@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#221a26"><meta name="description" content="Cartas da autora Ms. Addams: fragmentos, sentimentos e inquietações entre os manuscritos.">
+<title>Cartas da Autora · Ms. Addams</title><link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+body{background:radial-gradient(ellipse at 50% 0,#443044 0,#1a141e 72%);color:#f1e5db;min-height:100vh}
+.notes-shell{width:min(920px,calc(100% - 32px));margin:45px auto 100px}
+.notes-heading{text-align:center;margin:65px 0 48px}.notes-heading small{font:11px 'DM Sans',sans-serif;letter-spacing:.2em;color:#d6aebc}
+.notes-heading h1{font:400 clamp(32px,6vw,58px)/1.25 'Cinzel',Georgia,serif;margin:16px 0;color:#f7e9e0}
+.notes-heading p{font:italic 25px/1.4 'Cormorant Garamond',Georgia,serif;color:#d5bac4}
+.note-card{padding:clamp(24px,5vw,55px);margin:30px 0;background:#f4e9da url('papel-discreto.webp') center/cover;border:1px solid #bb9f9a;color:#32232b;box-shadow:0 18px 44px #11081688}
+.note-card h2{font:400 clamp(26px,4vw,38px)/1.35 'Cinzel',Georgia,serif;margin:9px 0 22px}
+.note-card .date{font:12px 'DM Sans',sans-serif;letter-spacing:.1em;color:#6d5360}
+.note-card p{font:500 clamp(20px,2.7vw,25px)/1.65 'Cormorant Garamond',Georgia,serif;margin:0 0 18px}
+.note-card .signature{text-align:right;color:#4c3240;font-style:italic;margin-top:35px}
+.note-placeholder{margin:40px auto;text-align:center;color:#ddc5cd}
+.notes-back{font:14px 'DM Sans',sans-serif;color:#e8cad2;text-decoration:none}
+@media(max-width:750px){.topbar{height:auto;min-height:75px;padding:18px;flex-wrap:wrap}.topbar nav{gap:16px;justify-content:center}}
+</style>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script defer src="assets/config.js"></script></head>
+<body>
+<header class="topbar"><a class="wordmark" href="index.html">✦ MS. ADDAMS</a>
+<nav aria-label="Navegação"><a href="index.html#biblioteca">Manuscritos</a><a href="cartas-da-autora.html" aria-current="page">Cartas da autora</a><a href="clube.html">Clube de Leitores</a><a href="index.html#cartas">Escreva-me</a></nav></header>
+<main class="notes-shell"><a class="notes-back" href="index.html">← Voltar ao arquivo</a>
+<div class="notes-heading"><small>✧ CORRESPONDÊNCIAS DA AUTORA ✧</small><h1>Cartas nas entrelinhas</h1>
+<p>Nem todo sentimento precisa se tornar um capítulo.</p></div>
+<div id="author-notes-list" aria-live="polite"><p class="note-placeholder">Abrindo as cartas...</p></div>
+</main>
+<footer class="footer"><a class="footer-logo" href="index.html">MS. ADDAMS</a><p>Algumas palavras preferem permanecer anônimas.</p>
+<p>© 2026 Ms. Addams. Todos os direitos reservados.</p><a class="footer-legal" href="privacidade.html">Privacidade</a></footer>
+<script>
+window.addEventListener('DOMContentLoaded',async()=>{
+ const root=document.getElementById('author-notes-list'),cfg=window.ADDAMS_CONFIG||{};
+ const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n;};
+ if(!window.supabase||!cfg.supabaseUrl||!cfg.supabasePublishableKey){root.replaceChildren(el('p','note-placeholder','As cartas estarão disponíveis em breve.'));return;}
+ const client=window.supabase.createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{auth:{persistSession:false,autoRefreshToken:false}});
+ const {data,error}=await client.from('author_notes').select('title,body,created_at').eq('published',true).order('created_at',{ascending:false}).limit(40);
+ root.replaceChildren();
+ if(error||!data?.length){root.append(el('p','note-placeholder',error?'A seção de cartas será aberta em breve.':'Nenhuma carta foi aberta por enquanto.'));return;}
+ for(const c of data){
+  const item=el('article','note-card');item.append(el('span','date',new Date(c.created_at).toLocaleDateString('pt-BR')));
+  item.append(el('h2','',c.title));
+  c.body.trim().split(/\n\s*\n/).forEach(p=>item.append(el('p','',p.trim())));
+  item.append(el('p','signature','— Ms. Addams'));root.append(item);
+ }
+});
+</script></body></html>
