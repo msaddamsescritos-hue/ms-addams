@@ -1,23 +1,54 @@
-/* Ms. Addams: folhear opcional e cartões de frases. Não altera o manuscrito original. */
-.manuscript-toolbar{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px;margin:26px auto 22px}
-.manuscript-button{appearance:none;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;min-height:42px;padding:11px 19px;border:1px solid #997682;background:#382835;color:#f4e9df;font:600 12px/1.45 'DM Sans',sans-serif;letter-spacing:.04em;transition:background .18s ease,transform .18s ease}
+/* Ms. Addams — Livro permanente, virada 3D e cartões de frases.
+   Não altera o texto nem depende de conexão adicional. */
+.manuscript-toolbar{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:12px;margin:26px auto 24px}
+.manuscript-button{appearance:none;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;min-height:43px;padding:11px 20px;border:1px solid #997682;background:#382835;color:#f4e9df;font:600 12px/1.45 'DM Sans',sans-serif;letter-spacing:.04em;transition:background .18s ease,transform .18s ease}
 .manuscript-button:hover{background:#624353;transform:translateY(-1px)}
-.manuscript-button:focus-visible{outline:3px solid #d9aeb2;outline-offset:3px}
-.manuscript-button:disabled{opacity:.35;cursor:not-allowed}
+.manuscript-button:focus-visible,.reader-edge:focus-visible{outline:3px solid #d9aeb2;outline-offset:3px}
+.manuscript-button:disabled{opacity:.4;cursor:not-allowed;transform:none}
 .manuscript-hint{flex-basis:100%;text-align:center;color:#c2b2bb;font:12px/1.5 'DM Sans',sans-serif}
-.manuscript-pager{display:flex;align-items:center;justify-content:center;gap:20px;margin:18px auto 35px}
-.manuscript-pager[hidden]{display:none}
-.manuscript-count{font:14px 'DM Sans',sans-serif;color:#dfc2c8}
-.reading-paper .reader-leaf{position:relative}
-.reading-paper:not(.book-mode) .reader-leaf + .reader-leaf{margin-top:34px;padding-top:34px;border-top:1px solid #7f5f584a}
-.reading-paper.book-mode{min-height:590px}
-.reading-paper.book-mode .reader-leaf{display:none}
-.reading-paper.book-mode .reader-leaf.reader-leaf-active{display:block;animation:msaddams-leaf .42s ease both}
-@keyframes msaddams-leaf{from{opacity:.2;transform:translateX(13px) rotate(.25deg)}to{opacity:1;transform:translateX(0)}}
+.manuscript-pager{display:flex;align-items:center;justify-content:center;gap:20px;margin:20px auto 40px}
+.manuscript-count{font:500 14px 'DM Sans',sans-serif;color:#dfc2c8;white-space:nowrap}
+
+/* Livro com uma folha visível de cada vez, com textura e assinatura originais. */
+.reading-paper.real-page-turn{position:relative;perspective:1800px;transform-style:preserve-3d;isolation:isolate;min-height:650px;box-shadow:5px 5px 0 #d3c3b2,9px 9px 0 #98857a,0 28px 66px #08040a85}
+.reading-paper.real-page-turn .reader-leaf{display:none;position:relative;min-height:370px}
+.reading-paper.real-page-turn > .reader-leaf.reader-leaf-active{display:block}
+.reading-paper.real-page-turn > .reader-leaf > p{position:relative;z-index:1}
+.reading-paper.real-page-turn .reader-leaf:not(:first-of-type) > p:first-child::first-letter{font:inherit;float:none;margin:0;color:inherit}
+.reading-paper.real-page-turn .reader-edge{position:absolute;z-index:5;top:47%;width:33px;height:70px;display:flex;align-items:center;justify-content:center;background:rgba(57,34,45,.09);border:1px solid rgba(76,47,52,.2);color:#543f47;font:42px/1 Georgia,serif;cursor:pointer;transition:background .2s ease,color .2s ease}
+.reading-paper.real-page-turn .reader-edge:hover:not(:disabled){background:rgba(91,55,68,.2);color:#241922}
+.reading-paper.real-page-turn .reader-edge:disabled{opacity:.16;cursor:default}
+.reading-paper.real-page-turn .reader-edge-back{left:5px;border-radius:2px 14px 14px 2px}
+.reading-paper.real-page-turn .reader-edge-next{right:5px;border-radius:14px 2px 2px 14px}
+
+/* A folha 3D parte da lombada esquerda e gira 180°, revelando o papel seguinte.
+   As duas faces recebem a mesma ilustração do capítulo. */
+.reading-paper.real-page-turn .reader-turn-sheet{position:absolute;inset:0;z-index:12;transform-origin:0% 50%;transform-style:preserve-3d;pointer-events:none;transition:transform .95s cubic-bezier(.28,.1,.17,1);will-change:transform}
+.reading-paper.real-page-turn .reader-turn-face{position:absolute;inset:0;overflow:hidden;box-sizing:border-box;border:1px solid #ab9288;backface-visibility:hidden;-webkit-backface-visibility:hidden;transform-style:preserve-3d;background-color:#efe4d5;background-repeat:no-repeat;box-shadow:0 12px 35px #170c1373}
+.reading-paper.real-page-turn .reader-turn-front{transform:rotateY(0deg)}
+.reading-paper.real-page-turn .reader-turn-front::after{content:'';position:absolute;top:0;bottom:0;right:0;width:36%;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(72,35,40,.14));z-index:3}
+.reading-paper.real-page-turn .reader-turn-back{transform:rotateY(180deg);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:25px;box-shadow:inset -30px 0 38px #34202b30,0 12px 35px #12091377}
+.reading-paper.real-page-turn .reader-turn-back::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,#e4d3c580,transparent 35%)}
+.reading-paper.real-page-turn .reader-turn-face .reader-leaf{display:block!important;min-height:0}
+.reading-paper.real-page-turn .reader-turn-ornament{font:58px/1 Georgia,serif;color:#7b5d69;opacity:.58}
+.reading-paper.real-page-turn .reader-turn-back .reader-turn-wordmark{font:italic 36px/1.3 'Cormorant Garamond',Georgia,serif;color:#533842;letter-spacing:.025em;margin:0;opacity:.8}
+.reading-paper.real-page-turn .reader-turn-line{font:14px/1.5 'Cormorant Garamond',Georgia,serif;color:#785965;letter-spacing:.12em}
+
+/* Cartões de frases compartilháveis */
 .msaddams-card-dialog{border:1px solid #ab8190;background:#241b26;color:#f3e6dc;padding:25px;width:min(470px,calc(100% - 24px));max-height:94vh;box-shadow:0 18px 75px #000a;text-align:center}
 .msaddams-card-dialog::backdrop{background:#140d15c9}
 .msaddams-card-dialog h2{font:400 25px 'Cormorant Garamond',Georgia,serif;margin:0 0 16px}
 .msaddams-card-dialog img{width:min(300px,100%);max-height:65vh;object-fit:contain}
 .msaddams-card-actions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:20px}
-@media(max-width:600px){.manuscript-toolbar{gap:8px}.manuscript-button{padding:10px 12px;font-size:11px}.reading-paper.book-mode{min-height:520px}.manuscript-hint{font-size:11px}.manuscript-pager{gap:10px}}
-@media(prefers-reduced-motion:reduce){.reading-paper.book-mode .reader-leaf.reader-leaf-active{animation:none}.manuscript-button{transition:none}}
+@media(max-width:600px){
+  .manuscript-toolbar{gap:8px}.manuscript-button{padding:10px 12px;font-size:11px}
+  .reading-paper.real-page-turn{min-height:540px}
+  .reading-paper.real-page-turn .reader-leaf{min-height:300px}
+  .reading-paper.real-page-turn .reader-edge{width:24px;height:55px;font-size:32px}
+  .reading-paper.real-page-turn .reader-edge-back{left:2px}.reading-paper.real-page-turn .reader-edge-next{right:2px}
+  .manuscript-hint{font-size:11px}.manuscript-pager{gap:10px;flex-wrap:wrap}
+}
+@media(prefers-reduced-motion:reduce){
+  .reading-paper.real-page-turn .reader-turn-sheet{transition:none}
+  .manuscript-button,.reader-edge{transition:none}
+}
