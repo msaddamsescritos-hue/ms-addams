@@ -46,9 +46,11 @@ Deno.serve(async request=>{
     const {server,error:authError}=await verifyAdmin(request);
     if(authError||!server)return authError||json({error:'Não autorizado.'},403);
     const {data:chapter,error:chapterError}=await server.from('chapters')
-      .select('slug,number,title,published').eq('slug',slug).eq('published',true).maybeSingle();
+      .select('slug,number,title,published,scheduled_at').eq('slug',slug).maybeSingle();
     if(chapterError)throw chapterError;
-    if(!chapter)return json({error:'O capítulo precisa estar publicado.'},422);
+    if(!chapter || !((chapter.published && !chapter.scheduled_at) ||
+       (chapter.scheduled_at && new Date(chapter.scheduled_at).getTime() <= Date.now())))
+      return json({error:'O capítulo ainda não está disponível para os leitores.'},422);
     const {count:confirmed,error:countError}=await server.from('club_subscribers')
       .select('id',{head:true,count:'exact'}).eq('status','confirmed');
     if(countError)throw countError;
