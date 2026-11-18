@@ -17,6 +17,7 @@
   let chapters = [], letters = [], currentLetter = null;
   let scheduleSupported = false;
   let extrasSupported = false;
+  let readerV4Supported = false;
   const visibleNow = c => Boolean((c.published && !c.scheduled_at) || (c.scheduled_at && new Date(c.scheduled_at).getTime() <= Date.now()));
   const scheduledLater = c => Boolean(c.scheduled_at && new Date(c.scheduled_at).getTime() > Date.now());
   const chapterLabel = c => scheduledLater(c) ? 'AGENDADO' : visibleNow(c) ? 'PUBLICADO' : 'RASCUNHO';
@@ -99,6 +100,17 @@
     if ($('extras-setup')) $('extras-setup').textContent = extrasSupported
       ? 'Personalização ativa. Os estilos selecionados serão aplicados automaticamente quando você publicar.'
       : 'Execute o arquivo db/biblioteca-v3.sql no SQL Editor para ativar os novos estilos e o histórico.';
+    if (chapters.length) readerV4Supported = Object.prototype.hasOwnProperty.call(chapters[0],'feeling_theme');
+    else {
+      const checkV4 = await client.from('chapters').select('feeling_theme').limit(1);
+      readerV4Supported = !checkV4.error;
+    }
+    for(const id of ['chapter-feeling-theme','chapter-closing-note']) {
+      const field=$(id);if(field)field.disabled=!readerV4Supported;
+    }
+    if($('reader-v4-status')) $('reader-v4-status').textContent = readerV4Supported
+      ? 'Categorias e mensagens de encerramento estão prontas para salvar.'
+      : 'Execute db/biblioteca-v4.sql no Supabase para ativar estes campos.';
     const scheduleButton = $('schedule-chapter');
     if (scheduleButton) scheduleButton.disabled = !scheduleSupported;
     const note = $('schedule-status');
@@ -158,6 +170,8 @@
     if ($('chapter-cover-theme')) $('chapter-cover-theme').value = c?.cover_theme || 'ameixa';
     if ($('chapter-paper-theme')) $('chapter-paper-theme').value = c?.paper_theme || 'automatico';
     if ($('chapter-auto-notify')) $('chapter-auto-notify').checked = Boolean(c?.auto_notify);
+    if ($('chapter-feeling-theme')) $('chapter-feeling-theme').value = c?.feeling_theme || 'outros';
+    if ($('chapter-closing-note')) $('chapter-closing-note').value = c?.closing_note || '';
     if ($('chapter-schedule-at')) $('chapter-schedule-at').value = scheduledLater(c || {}) ? toLocalDateTime(c.scheduled_at) : '';
     $('chapter-slug').value = c?.slug || '';
     $('editor-title').textContent = c ? `Editar · Capítulo ${c.number}` : 'Novo capítulo';
@@ -191,6 +205,10 @@
       result.cover_theme = $('chapter-cover-theme')?.value || 'ameixa';
       result.paper_theme = $('chapter-paper-theme')?.value || 'automatico';
       result.auto_notify = $('chapter-auto-notify')?.checked === true;
+    }
+    if (readerV4Supported) {
+      result.feeling_theme = $('chapter-feeling-theme')?.value || 'outros';
+      result.closing_note = clean($('chapter-closing-note')?.value || '');
     }
     return result;
   }
@@ -362,7 +380,7 @@
         !archived && (filter === 'all' || (filter === 'replied' ? l.status === 'replied' :
           filter === 'unread' ? letterOrganizationEnabled && !l.read_at :
           l.status !== 'replied'));
-      const haystack = [l.alias, l.email, l.message].join(' ').toLocaleLowerCase('pt-BR');
+      const haystack = [l.alias, l.email, l.message, l.topic].join(' ').toLocaleLowerCase('pt-BR');
       return matchesStatus && (!search || haystack.includes(search));
     });
     $('letter-filter-count').textContent = `${filtered.length} de ${letters.length} cartas exibidas`;
@@ -409,7 +427,9 @@
     gentle: 'Recebi suas palavras com atenção. Obrigada por confiar a mim um pouco da sua história.\n\n',
     reflective: 'Há perguntas que não encontram respostas imediatas, mas merecem ser acolhidas. Ao ler sua carta, pensei em algo que gostaria de compartilhar:\n\n',
     discreet: 'Algumas histórias pedem delicadeza, e a sua merece ser recebida com respeito.\n\n',
-    grateful: 'Agradeço por dedicar um pouco do seu tempo para me escrever. Sua mensagem chegou até mim e foi lida com carinho.\n\n'
+    grateful: 'Agradeço por dedicar um pouco do seu tempo para me escrever. Sua mensagem chegou até mim e foi lida com carinho.\n\n',
+    encouraging: 'Suas palavras me fizeram refletir sobre a coragem necessária para atravessar certos dias. Espero que encontre delicadeza em seu próprio caminho.\n\n',
+    concise: 'Obrigada por compartilhar sua história. Li sua carta com atenção e gostaria de lhe deixar esta reflexão:\n\n'
   };
   async function confirmLetterSent() {
     if (!currentLetter || currentLetter.status !== 'new') return;
@@ -495,6 +515,7 @@
     $('send-reply').textContent = answered ? 'Carta já respondida' : currentLetter.status === 'sending' ? 'Envio em andamento' : 'Abrir minha carta pronta no Gmail →';
     $('reply-feedback').textContent = answered ? `Resposta enviada em ${timestamp(currentLetter.replied_at)}.` : '';
     $('letter-detail').classList.remove('hidden'); $('letters-list').classList.add('hidden');
+    document.dispatchEvent(new CustomEvent('msaddams:letter-opened',{detail:{id:currentLetter.id,email:currentLetter.email,alias:currentLetter.alias,topic:currentLetter.topic||''}}));
     $('letter-detail').scrollIntoView({behavior:'smooth'});
   }
   // Um clique prepara o texto completo no próprio Gmail.
