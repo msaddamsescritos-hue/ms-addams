@@ -16,6 +16,7 @@
   const client = configured ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabasePublishableKey) : null;
   let chapters = [], letters = [], currentLetter = null;
   let scheduleSupported = false;
+  let extrasSupported = false;
   const visibleNow = c => Boolean((c.published && !c.scheduled_at) || (c.scheduled_at && new Date(c.scheduled_at).getTime() <= Date.now()));
   const scheduledLater = c => Boolean(c.scheduled_at && new Date(c.scheduled_at).getTime() > Date.now());
   const chapterLabel = c => scheduledLater(c) ? 'AGENDADO' : visibleNow(c) ? 'PUBLICADO' : 'RASCUNHO';
@@ -87,6 +88,17 @@
       const check = await client.from('chapters').select('scheduled_at').limit(1);
       scheduleSupported = !check.error;
     }
+    if (chapters.length) extrasSupported = Object.prototype.hasOwnProperty.call(chapters[0],'cover_theme');
+    else {
+      const checkExtras = await client.from('chapters').select('cover_theme').limit(1);
+      extrasSupported = !checkExtras.error;
+    }
+    ['chapter-cover-theme','chapter-paper-theme','chapter-auto-notify'].forEach(id => {
+      const el=$(id);if(el)el.disabled=!extrasSupported;
+    });
+    if ($('extras-setup')) $('extras-setup').textContent = extrasSupported
+      ? 'Personalização ativa. Os estilos selecionados serão aplicados automaticamente quando você publicar.'
+      : 'Execute o arquivo db/biblioteca-v3.sql no SQL Editor para ativar os novos estilos e o histórico.';
     const scheduleButton = $('schedule-chapter');
     if (scheduleButton) scheduleButton.disabled = !scheduleSupported;
     const note = $('schedule-status');
@@ -143,6 +155,9 @@
     $('chapter-title').value = c?.title || '';
     $('chapter-epigraph').value = c?.epigraph || '';
     $('chapter-body').value = c?.body || '';
+    if ($('chapter-cover-theme')) $('chapter-cover-theme').value = c?.cover_theme || 'ameixa';
+    if ($('chapter-paper-theme')) $('chapter-paper-theme').value = c?.paper_theme || 'automatico';
+    if ($('chapter-auto-notify')) $('chapter-auto-notify').checked = Boolean(c?.auto_notify);
     if ($('chapter-schedule-at')) $('chapter-schedule-at').value = scheduledLater(c || {}) ? toLocalDateTime(c.scheduled_at) : '';
     $('chapter-slug').value = c?.slug || '';
     $('editor-title').textContent = c ? `Editar · Capítulo ${c.number}` : 'Novo capítulo';
@@ -172,6 +187,11 @@
       published_at: published ? (existing?.published_at || new Date().toISOString()) : null
     };
     if (scheduleSupported) result.scheduled_at = null;
+    if (extrasSupported) {
+      result.cover_theme = $('chapter-cover-theme')?.value || 'ameixa';
+      result.paper_theme = $('chapter-paper-theme')?.value || 'automatico';
+      result.auto_notify = $('chapter-auto-notify')?.checked === true;
+    }
     return result;
   }
   async function saveChapter(published) {
