@@ -39,7 +39,7 @@ async function enhanceChapter(){
    if(started)return;started=true;
    const {data}=await db.from('chapters').select('cover_theme,paper_theme').eq('slug',slug).maybeSingle();
    if(data?.cover_theme)paper.dataset.coverTheme=data.cover_theme;
-   if(data?.paper_theme&&data.paper_theme!=='automatico')paper.dataset.paperTheme=data.paper_theme;
+   if(data?.paper_theme&&data.paper_theme!=='automatico') {paper.dataset.paperOverride='1';paper.dataset.paperTheme=data.paper_theme;}
    // Uma leitura por sessão do navegador e por capítulo. Nunca armazena IP no banco.
    try{
      if(localStorage.getItem('msaddams_owner_visit_exclusion_v1')==='1')return;
