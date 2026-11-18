@@ -15,6 +15,17 @@
   const configured = Boolean(cfg.supabaseUrl && cfg.supabasePublishableKey && window.supabase);
   const client = configured ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabasePublishableKey) : null;
   let chapters = [], letters = [], currentLetter = null;
+  let scheduleSupported = false;
+  const visibleNow = c => Boolean((c.published && !c.scheduled_at) || (c.scheduled_at && new Date(c.scheduled_at).getTime() <= Date.now()));
+  const scheduledLater = c => Boolean(c.scheduled_at && new Date(c.scheduled_at).getTime() > Date.now());
+  const chapterLabel = c => scheduledLater(c) ? 'AGENDADO' : visibleNow(c) ? 'PUBLICADO' : 'RASCUNHO';
+  function toLocalDateTime(value) {
+    if (!value) return '';
+    const d = new Date(value);
+    if (!Number.isFinite(d.getTime())) return '';
+    const pad = n => String(n).padStart(2,'0');
+    return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+  }
   let letterOrganizationEnabled = false;
   const escapeHtml = v => String(v || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   function status(id, msg, error = false) { const el = $(id); el.textContent = msg; el.className = `form-feedback ${error ? 'error' : 'success'}`; }
@@ -71,28 +82,39 @@
     const { data, error } = await client.from('chapters').select('*').order('number', { ascending: true });
     if (error) { $('manuscript-list').textContent = `Erro ao carregar manuscritos: ${error.message}`; return; }
     chapters = data || [];
+    if (chapters.length) scheduleSupported = Object.prototype.hasOwnProperty.call(chapters[0], 'scheduled_at');
+    else {
+      const check = await client.from('chapters').select('scheduled_at').limit(1);
+      scheduleSupported = !check.error;
+    }
+    const scheduleButton = $('schedule-chapter');
+    if (scheduleButton) scheduleButton.disabled = !scheduleSupported;
+    const note = $('schedule-status');
+    if (note) note.textContent = scheduleSupported
+      ? 'O manuscrito ficará privado até a data e hora escolhidas. O site libera a leitura automaticamente.'
+      : 'Para ativar, execute uma vez o SQL db/agendamento-capitulos.sql no Supabase e atualize o Gabinete.';
     const clubOptions = $('club-chapter-select');
     if (clubOptions) {
       const selected = clubOptions.value;
       clubOptions.replaceChildren(new Option('Selecione um manuscrito',''));
-      chapters.filter(c => c.published).forEach(c => {
+      chapters.filter(visibleNow).forEach(c => {
         clubOptions.add(new Option('Capítulo '+ c.number +' — '+ c.title,c.slug));
       });
-      if (chapters.some(c => c.published && c.slug === selected)) clubOptions.value = selected;
+      if (chapters.some(c => visibleNow(c) && c.slug === selected)) clubOptions.value = selected;
     }
-    $('count-published').textContent = chapters.filter(c => c.published).length;
-    $('count-draft').textContent = chapters.filter(c => !c.published).length;
+    $('count-published').textContent = chapters.filter(visibleNow).length;
+    $('count-draft').textContent = chapters.filter(c => !visibleNow(c) && !scheduledLater(c)).length;
     const list = $('manuscript-list'); list.replaceChildren();
     if (!chapters.length) { const empty = document.createElement('p'); empty.className = 'empty-state'; empty.textContent = 'Ainda não há capítulos. Clique em “Novo capítulo” para começar.'; list.append(empty); return; }
     chapters.forEach(c => {
       const row = document.createElement('div'); row.className = 'admin-row';
       const summary = document.createElement('div');
-      summary.innerHTML = `<p>CAPÍTULO ${String(c.number).padStart(2,'0')} · ${c.published ? 'PUBLICADO' : 'RASCUNHO'}</p><h3>${escapeHtml(c.title)}</h3><p>Atualizado: ${timestamp(c.updated_at)}</p>`;
+      summary.innerHTML = `<p>CAPÍTULO ${String(c.number).padStart(2,'0')} · ${chapterLabel(c)}</p><h3>${escapeHtml(c.title)}</h3><p>Atualizado: ${timestamp(c.updated_at)}</p>`;
       const actions = document.createElement('div'); actions.className = 'actions';
-      const pill = document.createElement('span'); pill.className = `status-pill ${c.published ? '' : 'draft'}`; pill.textContent = c.published ? 'Público' : 'Privado';
+      const pill = document.createElement('span'); pill.className = `status-pill ${visibleNow(c) ? '' : 'draft'}`; pill.textContent = scheduledLater(c) ? 'Agendado · '+timestamp(c.scheduled_at) : visibleNow(c) ? 'Público' : 'Privado';
       const edit = document.createElement('button'); edit.className = 'outline-btn'; edit.type = 'button'; edit.textContent = 'Editar'; edit.addEventListener('click', () => editChapter(c.id));
       actions.append(pill, edit);
-      if (c.published) {
+      if (visibleNow(c)) {
         const promo = document.createElement('button'); promo.className = 'outline-btn';
         promo.type = 'button'; promo.textContent = 'Copiar divulgação ↗';
         promo.title = 'Copia uma chamada curta, sem spoilers, com o link do capítulo';
@@ -110,7 +132,7 @@
         });
         actions.append(promo);
       }
-      if (c.published) { const link = document.createElement('a'); link.className = 'outline-btn'; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = 'Ver no site'; link.href = `../capitulo.html?slug=${encodeURIComponent(c.slug)}`; actions.append(link); }
+      if (visibleNow(c)) { const link = document.createElement('a'); link.className = 'outline-btn'; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = 'Ver no site'; link.href = `../capitulo.html?slug=${encodeURIComponent(c.slug)}`; actions.append(link); }
       row.append(summary, actions); list.append(row);
     });
   }
@@ -121,6 +143,7 @@
     $('chapter-title').value = c?.title || '';
     $('chapter-epigraph').value = c?.epigraph || '';
     $('chapter-body').value = c?.body || '';
+    if ($('chapter-schedule-at')) $('chapter-schedule-at').value = scheduledLater(c || {}) ? toLocalDateTime(c.scheduled_at) : '';
     $('chapter-slug').value = c?.slug || '';
     $('editor-title').textContent = c ? `Editar · Capítulo ${c.number}` : 'Novo capítulo';
     $('delete-chapter').classList.toggle('hidden', !c);
@@ -141,13 +164,15 @@
     const epigraph = clean($('chapter-epigraph').value);
     const existingId = $('chapter-id').value;
     const existing = chapters.find(c => String(c.id) === String(existingId));
-    return {
+    const result = {
       number,
       title, body, epigraph,
       slug: existing?.slug || `capitulo-${number}-${slugify(title)}`,
       published,
       published_at: published ? (existing?.published_at || new Date().toISOString()) : null
     };
+    if (scheduleSupported) result.scheduled_at = null;
+    return result;
   }
   async function saveChapter(published) {
     const form = $('chapter-form'); if (!form.reportValidity()) return;
@@ -161,11 +186,49 @@
       status('chapter-feedback', 'Alteração cancelada. O capítulo continua publicado.');
       return;
     }
+    if (existing && scheduledLater(existing) && !published &&
+        !window.confirm('Salvar como rascunho cancelará a publicação programada. Deseja continuar?')) {
+      status('chapter-feedback', 'O agendamento foi mantido.');
+      return;
+    }
     const request = id ? client.from('chapters').update(chapter).eq('id', id).select().single() : client.from('chapters').insert(chapter).select().single();
     const { data, error } = await request;
     if (error) { status('chapter-feedback', `Não foi possível salvar: ${error.message}`, true); return; }
     await loadChapters(); resetEditor(data);
     status('chapter-feedback', published ? 'Capítulo publicado! Já pode ser lido na biblioteca.' : 'Rascunho salvo com segurança. Não aparece para leitores.');
+  }
+  async function scheduleChapter() {
+    if (!scheduleSupported) {
+      status('chapter-feedback', 'Agendamento indisponível: execute o SQL db/agendamento-capitulos.sql no Supabase e atualize a página.', true);
+      return;
+    }
+    if (!$('chapter-form').reportValidity()) return;
+    const chosen = $('chapter-schedule-at').value;
+    const at = new Date(chosen);
+    if (!chosen || !Number.isFinite(at.getTime()) || at.getTime() < Date.now() + 60000) {
+      status('chapter-feedback','Escolha uma data e hora futuras (pelo menos 1 minuto à frente).',true);
+      return;
+    }
+    const record = formChapter(false);
+    record.scheduled_at = at.toISOString();
+    record.published_at = null;
+    if (!record.title || !record.body || !Number.isInteger(record.number) || record.number < 1) {
+      status('chapter-feedback','Preencha título, número e texto antes de agendar.',true);
+      return;
+    }
+    const id = $('chapter-id').value;
+    const existing = chapters.find(c => String(c.id) === String(id));
+    if (existing && visibleNow(existing) &&
+        !window.confirm('Este capítulo já está público. Agendar novamente vai retirá-lo da biblioteca até a nova data. Continuar?')) {
+      status('chapter-feedback','Alteração cancelada; o capítulo continua publicado.');return;
+    }
+    status('chapter-feedback','Agendando o manuscrito…');
+    const query = id ? client.from('chapters').update(record).eq('id',id).select().single()
+                     : client.from('chapters').insert(record).select().single();
+    const {data,error} = await query;
+    if (error) {status('chapter-feedback','Não foi possível agendar: '+error.message,true);return;}
+    await loadChapters();resetEditor(data);
+    status('chapter-feedback','Capítulo agendado para '+timestamp(at.toISOString())+'. Até lá, ficará privado.');
   }
   async function deleteChapter() {
     const id = $('chapter-id').value;
@@ -474,6 +537,7 @@
   });
   $('logout').addEventListener('click',async()=>{await client.auth.signOut();showLogin();});
   $('new-chapter').addEventListener('click',()=>resetEditor(null));
+  $('schedule-chapter').addEventListener('click',scheduleChapter);
   $('close-editor').addEventListener('click',()=>$('editor-block').classList.add('hidden'));
   $('chapter-title').addEventListener('input',()=>{if (!$('chapter-id').value) $('chapter-slug').value = `capitulo-${$('chapter-number').value}-${slugify($('chapter-title').value)}`;});
   $('chapter-number').addEventListener('input',()=>{if (!$('chapter-id').value) $('chapter-slug').value = `capitulo-${$('chapter-number').value}-${slugify($('chapter-title').value)}`;});
