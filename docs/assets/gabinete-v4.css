@@ -23,3 +23,9 @@
 .v4-history-message{white-space:pre-wrap;font:18px/1.6 'Cormorant Garamond',Georgia,serif;color:#eee2df;padding:12px 5px}
 .v4-history-response-label{font:12px 'DM Sans',sans-serif;text-transform:uppercase;letter-spacing:.12em;color:#d7abbc}
 @media(max-width:630px){.v4-radar-milestone{grid-template-columns:110px minmax(60px,1fr) 36px;gap:7px;font-size:10px}}
+
+.v4-last-positions{border-top:1px solid #765a69;padding-top:18px;margin:19px 0}
+.v4-last-positions h4{font:500 12px/1.4 'DM Sans',sans-serif;letter-spacing:.08em;color:#e4c8d4;margin:0 0 12px;text-transform:uppercase}
+.v4-last-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:9px}
+.v4-last-pill{display:flex;flex-direction:column;gap:5px;padding:12px 13px;background:#2c212d;border:1px solid #715667;color:#dcc7d1;font:12px/1.4 'DM Sans',sans-serif}
+.v4-last-pill strong{font:400 25px/1.1 Georgia,serif;color:#f4e1d8}
