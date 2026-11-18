@@ -16,7 +16,25 @@
     const paper = root.querySelector('.reading-paper');
     if (!paper || paper.dataset.enhanced === 'true') return;
     paper.dataset.enhanced = 'true';
-    const original = Array.from(paper.children);
+    // Em manuscritos longos, a autora às vezes usa apenas uma quebra de linha.
+    // Dividir blocos extensos evita que o modo livro vire uma única página gigante.
+    const original = Array.from(paper.children).flatMap(node => {
+      if (node.tagName !== 'P' || node.classList.contains('reader-note') ||
+          node.classList.contains('chapter-signature')) return [node];
+      const raw = (node.textContent || '').trim();
+      const blocks = raw.split(/\n+/).map(v=>v.trim()).filter(Boolean);
+      if (blocks.length === 1 && raw.split(/\s+/).length <= 290) return [node];
+      const normalized = [];
+      blocks.forEach(block => {
+        const words = block.split(/\s+/);
+        for (let i = 0; i < words.length; i += 235) {
+          const fragment = make('p',node.className,words.slice(i,i+235).join(' '));
+          normalized.push(fragment);
+        }
+      });
+      node.remove();
+      return normalized;
+    });
     const chunks = [];
     let group = [], words = 0;
     original.forEach(node => {
