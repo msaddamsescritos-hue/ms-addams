@@ -34,32 +34,28 @@ async function enhanceChapter(){
  const slug=new URLSearchParams(window.location.search).get('slug');
  if(!slug)return;
  const root=document.getElementById('chapter-content');if(!root)return;
- let completed=false;
- const observer=new MutationObserver(async()=>{
-   const paper=root.querySelector('.reading-paper.real-page-turn');
-   if(!paper||completed)return;
-   completed=true;observer.disconnect();
+ let started=false;
+ const apply=async paper=>{
+   if(started)return;started=true;
    const {data}=await db.from('chapters').select('cover_theme,paper_theme').eq('slug',slug).maybeSingle();
    if(data?.cover_theme)paper.dataset.coverTheme=data.cover_theme;
    if(data?.paper_theme&&data.paper_theme!=='automatico')paper.dataset.paperTheme=data.paper_theme;
-   // Estatísticas sem IP, CPF ou e-mail. O navegador registra no máximo 1 leitura por sessão.
+   // Uma leitura por sessão do navegador e por capítulo. Nunca armazena IP no banco.
    try{
      if(localStorage.getItem('msaddams_owner_visit_exclusion_v1')==='1')return;
      const key='msaddams_chapter_read_v3:'+slug;
      if(sessionStorage.getItem(key)==='1')return;
-     sessionStorage.setItem(key,'1');
-     await db.rpc('record_chapter_read',{p_slug:slug});
-   }catch(_){/* nunca interfere na leitura */}
+     const {error}=await db.rpc('record_chapter_read',{p_slug:slug});
+     if(!error)sessionStorage.setItem(key,'1');
+   }catch(_){/* leitura sempre continua */}
+ };
+ const now=root.querySelector('.reading-paper.real-page-turn');
+ if(now){apply(now);return;}
+ const observer=new MutationObserver(()=>{
+   const paper=root.querySelector('.reading-paper.real-page-turn');
+   if(paper){observer.disconnect();apply(paper);}
  });
  observer.observe(root,{childList:true,subtree:true});
- if(root.querySelector('.reading-paper.real-page-turn')) {
-   // Garante execução também quando a página já foi montada.
-   const node=root.querySelector('.reading-paper.real-page-turn');
-   const {data}=await db.from('chapters').select('cover_theme,paper_theme').eq('slug',slug).maybeSingle();
-   if(data?.cover_theme)node.dataset.coverTheme=data.cover_theme;
-   if(data?.paper_theme&&data.paper_theme!=='automatico')node.dataset.paperTheme=data.paper_theme;
-   observer.disconnect();completed=true;
- }
 }
 if(document.body.dataset.page==='home')reveal();
 if(document.body.dataset.page==='chapter')enhanceChapter();
