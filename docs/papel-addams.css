@@ -1,0 +1,31 @@
+/* MS. ADDAMS — PAPEIS ILUSTRADOS, v1.0
+   Sobrescreve apenas o fundo da folha de leitura; não afeta login, biblioteca, dados ou cartas. */
+.reading-paper {
+  background-color: #efe4d5;
+  background-image: linear-gradient(rgba(250,245,238,.35),rgba(250,245,238,.35)), url('papel-discreto.webp');
+  background-position: center, center;
+  background-size: 100% 100%, 100% 100%;
+  background-repeat: no-repeat;
+  border: 1px solid #af9285;
+  padding: clamp(57px, 8vw, 98px) clamp(44px, 8vw, 95px);
+  box-shadow: 0 20px 58px #0f0a1270;
+  color: #332b2b;
+}
+.reading-paper[data-paper-theme="romantico"] {
+  background-image: linear-gradient(rgba(250,245,238,.38),rgba(250,245,238,.38)), url('papel-romantico.webp');
+}
+.reading-paper[data-paper-theme="sofisticado"] {
+  background-image: linear-gradient(rgba(250,245,238,.35),rgba(250,245,238,.35)), url('papel-sofisticado.webp');
+}
+.reading-paper[data-paper-theme="discreto"] {
+  background-image: linear-gradient(rgba(250,245,238,.35),rgba(250,245,238,.35)), url('papel-discreto.webp');
+}
+/* Mantém ornamentos afastados das palavras e legibilidade no celular. */
+.reading-paper p { color: #382f34; position: relative; z-index: 1; text-shadow: 0 1px #fff8; }
+.reading-paper .reader-note { color: #6c565a; }
+.reading-paper .chapter-signature { color:#73535f; border-top-color: #b5a39b; }
+@media(max-width: 600px){
+  .reading-paper { padding: 69px 40px 85px; }
+  .reading-paper p { font-size: clamp(19px, 5vw, 22px); line-height: 1.55; }
+}
+@media(max-width: 400px){.reading-paper {padding: 68px 29px 74px;}}
