@@ -70,20 +70,46 @@ async function versions(){
 }
 $('load-versions')?.addEventListener('click',versions);
 async function insights(){
- if(!db)return;msg('insights-feedback','Consultando...');
- const el=$('chapter-insights');el.replaceChildren();
+ if(!db)return;
+ msg('insights-feedback','Consultando o histórico completo...');
+ const el=$('chapter-insights'),summary=$('chapter-insights-summary');
+ el.replaceChildren();if(summary)summary.replaceChildren();
  const {data,error}=await db.rpc('chapter_read_summary');
- if(error){msg('insights-feedback','Para ativar, execute db/biblioteca-v3.sql. As contagens começam na instalação.',true);return;}
- const max=Math.max(1,...(data||[]).map(c=>Number(c.total_reads)||0));
- (data||[]).forEach(c=>{
-  const row=node('div','v3-list-item'),body=node('div','v3-metric');
-  body.append(node('h3','',c.chapter_title),node('strong','',Number(c.total_reads||0).toLocaleString('pt-BR')+' aberturas'));
-  body.append(node('p','','Nos últimos 7 dias: '+Number(c.recent_reads||0).toLocaleString('pt-BR')));
-  const bar=node('div','v3-bar'),fill=node('span');fill.style.width=100*Number(c.total_reads||0)/max+'%';
-  bar.append(fill);body.append(bar);row.append(body);el.append(row);
+ if(error){
+   msg('insights-feedback','Não foi possível consultar os indicadores. Confirme que db/biblioteca-v3.sql foi executado no Supabase.',true);
+   return;
+ }
+ // O banco já retorna total_reads acumulado desde a ativação, sem filtro de 7 dias.
+ const rows=Array.isArray(data)?data:[];
+ const total=rows.reduce((sum,c)=>sum+(Number(c.total_reads)||0),0);
+ const readChapters=rows.filter(c=>(Number(c.total_reads)||0)>0).length;
+ if(summary){
+   const metrics=[
+     ['Total de aberturas',total.toLocaleString('pt-BR')],
+     ['Capítulos acessados',readChapters+' de '+rows.length]
+   ];
+   for(const [title,count] of metrics){
+     const metric=node('div','v3-summary-metric');
+     metric.append(node('span','',title),node('strong','',count));
+     summary.append(metric);
+   }
+ }
+ const max=Math.max(1,...rows.map(c=>Number(c.total_reads)||0));
+ rows.forEach(c=>{
+   const count=Number(c.total_reads)||0;
+   const card=node('article','v3-list-item v3-insight-item');
+   const detail=node('div','v3-insight-detail');
+   detail.append(node('h3','',c.chapter_title));
+   detail.append(node('p','v3-insight-subtitle','Total acumulado desde a ativação'));
+   const metric=node('div','v3-metric');
+   metric.append(node('strong','',count.toLocaleString('pt-BR')));
+   metric.append(node('p','',count===1?'abertura registrada':'aberturas registradas'));
+   const bar=node('div','v3-bar'),fill=node('span');
+   fill.style.width=(100*count/max)+'%';bar.append(fill);
+   metric.append(bar);card.append(detail,metric);el.append(card);
  });
- if(!data?.length)el.append(node('p','v3-quiet','Ainda não há dados de capítulos.'));
- msg('insights-feedback','Aberturas aproximadas por sessão; não são leitores únicos nem leituras concluídas.');
+ if(!rows.length)el.append(node('p','v3-quiet','Ainda não há capítulos para acompanhar.'));
+ msg('insights-feedback','Exibindo todas as aberturas registradas, sem limite de sete dias. Uma abertura não significa leitura concluída.');
 }
 $('refresh-chapter-insights')?.addEventListener('click',insights);
 async function studioLoad(){
