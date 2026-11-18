@@ -20,3 +20,7 @@ verify_jwt = false
 # Envio administrativo: autenticação e papel de autora verificados na função.
 [functions.club-notify]
 verify_jwt = false
+
+# Avisos programados: chamada autenticada por segredo privado de automação.
+[functions.club-auto]
+verify_jwt = false
