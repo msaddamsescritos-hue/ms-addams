@@ -59,3 +59,8 @@ Até esse momento, o formulário público aparece como **inscrições em prepara
 - A entrega e os limites dependem da configuração e do plano do provedor.
 - O envio de avisos é manual e consciente, não automático ao publicar capítulos.
 - A política de privacidade deve ser revisada quanto ao canal de solicitações e prazo de retenção.
+
+
+## Atualização Biblioteca 3.0 (18/11/2026)
+
+O fluxo acima descreve os **avisos manuais** e continua válido. A automação **opcional e desativada até configurar segredos e deploy** está em `GUIA-BIBLIOTECA-V3.md` e usa `supabase/functions/club-auto/index.ts` com a rotina `.github/workflows/clube-automatico.yml`. O novo seletor `auto_notify` inicia desligado em todos os capítulos; somente autores autorizados podem ativá-lo. Os avisos automáticos mantêm a exigência de inscrição confirmada, cancelamento e controle contra duplicidade.
