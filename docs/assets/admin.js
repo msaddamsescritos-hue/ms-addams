@@ -260,7 +260,7 @@
     $('editor-block').classList.add('hidden'); await loadChapters();
   }
   function switchTab(which) {
-    for (const t of ['manuscripts','letters','club']) {
+    for (const t of ['manuscripts','letters','club','authornotes','studio','insights']) {
       const selected = which === t;
       $(`tab-${t}`).classList.toggle('active', selected);
       $(`tab-${t}`).setAttribute('aria-selected', String(selected));
