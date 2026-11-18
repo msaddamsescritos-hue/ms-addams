@@ -132,7 +132,8 @@ returns table(
  slug text,chapter_title text,
  started_count bigint,completed_count bigint,
  reached_25 bigint,reached_50 bigint,reached_75 bigint,
- below_half bigint,identification_count bigint,reflection_count bigint,comfort_count bigint
+ below_half bigint,last_0_24 bigint,last_25_49 bigint,last_50_74 bigint,last_75_99 bigint,
+ identification_count bigint,reflection_count bigint,comfort_count bigint
 )
 language plpgsql stable security definer set search_path='' as $$
 begin
@@ -145,6 +146,10 @@ begin
   count(s.session_token) filter(where s.max_percent>=50)::bigint,
   count(s.session_token) filter(where s.max_percent>=75)::bigint,
   count(s.session_token) filter(where s.max_percent<50 and not s.completed)::bigint,
+  count(s.session_token) filter(where s.max_percent<25 and not s.completed)::bigint,
+  count(s.session_token) filter(where s.max_percent>=25 and s.max_percent<50 and not s.completed)::bigint,
+  count(s.session_token) filter(where s.max_percent>=50 and s.max_percent<75 and not s.completed)::bigint,
+  count(s.session_token) filter(where s.max_percent>=75 and s.max_percent<100 and not s.completed)::bigint,
   (select count(*) from public.chapter_reaction_votes_v4 v
     where v.chapter_slug=c.slug and v.reaction='identificacao')::bigint,
   (select count(*) from public.chapter_reaction_votes_v4 v
