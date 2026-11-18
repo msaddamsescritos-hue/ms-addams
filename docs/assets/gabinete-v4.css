@@ -1,0 +1,25 @@
+/* Ms. Addams 4.0 — radar de leitura e arquivo das correspondências */
+.v4-radar-wrap{border-top:1px solid #6b4e5e;margin:37px 0;padding-top:28px}
+.v4-radar-list{display:grid;gap:18px;margin-top:20px}
+.v4-radar-card{background:linear-gradient(120deg,#332534,#241b29);border:1px solid #7b5b6b;padding:clamp(16px,3vw,26px)}
+.v4-radar-card h3{font:400 29px/1.25 'Cormorant Garamond',Georgia,serif;color:#f0e4d9;margin:0 0 8px}
+.v4-radar-headline{font:13px/1.5 'DM Sans',sans-serif;color:#d5bdc6;margin:0 0 20px}
+.v4-radar-chart{display:grid;gap:13px}
+.v4-radar-milestone{display:grid;grid-template-columns:minmax(105px,155px) minmax(85px,1fr) 48px;align-items:center;gap:12px;font:12px/1.4 'DM Sans',sans-serif;color:#ecded6}
+.v4-radar-milestone b{text-align:right;font-weight:500}
+.v4-radar-track{height:12px;border-radius:20px;background:#503949;overflow:hidden;position:relative}
+.v4-radar-track span{display:block;background:linear-gradient(90deg,#875c74,#d9a3b3);height:100%;border-radius:20px;transition:width .25s ease}
+.v4-radar-footnote{font:12px/1.5 'DM Sans',sans-serif;color:#bdaab5;margin:20px 0}
+.v4-radar-reactions{display:flex;gap:9px;flex-wrap:wrap}
+.v4-radar-pill{border:1px solid #886475;background:#392b38;color:#e3c9d0;padding:6px 11px;font:12px 'DM Sans',sans-serif}
+.v4-letter-topic,.v4-letter-history{padding:18px 20px;border:1px solid #765b6b;background:#2b222d;margin:18px 0}
+.v4-letter-topic{display:flex;align-items:end;gap:12px;flex-wrap:wrap}
+.v4-letter-topic .admin-field{flex:1 1 270px;margin:0}
+.v4-letter-topic .small-note{flex-basis:100%;margin:0}
+.v4-letter-history h4{font:400 25px/1.25 'Cormorant Garamond',Georgia,serif;margin:0 0 9px}
+.v4-history-entry{border-top:1px solid #735c6b;margin-top:11px;padding:10px 0}
+.v4-history-entry summary{cursor:pointer;font:13px/1.6 'DM Sans',sans-serif;color:#f0d9df}
+.v4-history-current summary{font-weight:600}
+.v4-history-message{white-space:pre-wrap;font:18px/1.6 'Cormorant Garamond',Georgia,serif;color:#eee2df;padding:12px 5px}
+.v4-history-response-label{font:12px 'DM Sans',sans-serif;text-transform:uppercase;letter-spacing:.12em;color:#d7abbc}
+@media(max-width:630px){.v4-radar-milestone{grid-template-columns:110px minmax(60px,1fr) 36px;gap:7px;font-size:10px}}
